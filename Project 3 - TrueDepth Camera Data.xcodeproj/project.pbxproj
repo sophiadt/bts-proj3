@@ -6,6 +6,10 @@
 	objectVersion = 90;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		26DAF9D0307C3F0D00605E9A /* MediaPipeTasksVision in Frameworks */ = {isa = PBXBuildFile; productRef = 26DAF9CF307C3F0D00605E9A /* MediaPipeTasksVision */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		000000000000000000000120 /* Project 3 - TrueDepth Camera Data.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Project 3 - TrueDepth Camera Data.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -22,6 +26,7 @@
 		000000000000000130000000 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			files = (
+				26DAF9D0307C3F0D00605E9A /* MediaPipeTasksVision in Frameworks */,
 			);
 		};
 /* End PBXFrameworksBuildPhase section */
@@ -31,6 +36,7 @@
 			isa = PBXGroup;
 			children = (
 				000000000000000000000010 /* Project 3 - TrueDepth Camera Data */,
+				26DAF9CE307C3F0D00605E9A /* Frameworks */,
 				000000000000000000000020 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -41,6 +47,13 @@
 				000000000000000000000120 /* Project 3 - TrueDepth Camera Data.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		26DAF9CE307C3F0D00605E9A /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -60,6 +73,9 @@
 				000000000000000000000010 /* Project 3 - TrueDepth Camera Data */,
 			);
 			name = "Project 3 - TrueDepth Camera Data";
+			packageProductDependencies = (
+				26DAF9CF307C3F0D00605E9A /* MediaPipeTasksVision */,
+			);
 			productName = MyApp;
 			productReference = 000000000000000000000120 /* Project 3 - TrueDepth Camera Data.app */;
 			productType = "com.apple.product-type.application";
@@ -88,6 +104,9 @@
 			);
 			mainGroup = 000000000000000000000001;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				26DAF9CC307BE32900605E9A /* XCRemoteSwiftPackageReference "mediapipe" */,
+			);
 			preferredProjectObjectVersion = 90;
 			productRefGroup = 000000000000000000000020 /* Products */;
 			projectDirPath = "";
@@ -347,6 +366,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		26DAF9CC307BE32900605E9A /* XCRemoteSwiftPackageReference "mediapipe" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google-ai-edge/mediapipe";
+			requirement = {
+				branch = master;
+				kind = branch;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		26DAF9CF307C3F0D00605E9A /* MediaPipeTasksVision */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 26DAF9CC307BE32900605E9A /* XCRemoteSwiftPackageReference "mediapipe" */;
+			productName = MediaPipeTasksVision;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 000000000000000000000000 /* Project object */;
 }

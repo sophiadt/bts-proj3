@@ -222,3 +222,4 @@ DerivedData/
 build/
 .DS_Store
 captures/
+Pods/
