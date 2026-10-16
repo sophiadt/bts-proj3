@@ -16,12 +16,30 @@ final class CameraManager: NSObject, ObservableObject, AVCaptureDataOutputSynchr
     private var frameCount = 0
     private var landmarker: FaceLandmarker?
     private var pending = 0
+    private var videoLandmarker: FaceLandmarker?
+    private var recording = false            // only touched on visionQueue
+    private let visionQueue = DispatchQueue(label: "vision.queue", qos: .userInitiated)
+    private var visionBusy = false            // only touched on `queue`
+    private var wantRGB = false
+    private var recStart: Double = 0
+    private var lastTimestampMs = -1
+    private var recMisses = 0
+    private var recFrames: [(t: Double, pts: [SIMD3<Float>?])] = []
+    private var recIntrinsics: Intrinsics?
     private let ciContext = CIContext()
 
     @Published var status = "Starting..."
     @Published var saveMessage = ""
     @Published var prompt = ""
     @Published var isCapturing = false
+    @Published var isRecording = false
+    @Published var meshPoints: [CGPoint] = []   // live face landmarks, 0...1 in the upright image
+    @Published var rgbImage: UIImage?
+    @Published var meshValid: [Bool] = []       // false = no depth (or outside the frame) for that landmark
+    @Published var faceStatus = "NO FACE"
+    @Published var faceOK = false
+    @Published var showRGB = false { didSet { wantRGB = showRGB } }
+    lazy var meshEdges: [(Int, Int)] = FaceLandmarker.tesselationConnections().map { (Int($0.start), Int($0.end)) }
     @Published var depthImage: UIImage?
     @Published var savedFiles: [URL] = []
 
@@ -62,6 +80,11 @@ final class CameraManager: NSObject, ObservableObject, AVCaptureDataOutputSynchr
             options.runningMode = .image
             options.numFaces = 1
             landmarker = try FaceLandmarker(options: options)
+            let vopts = FaceLandmarkerOptions()
+            vopts.baseOptions.modelAssetPath = path
+            vopts.runningMode = .video
+            vopts.numFaces = 1
+            videoLandmarker = try FaceLandmarker(options: vopts)
         } catch {
             DispatchQueue.main.async { self.saveMessage = "MediaPipe failed to load: \(error.localizedDescription)" }
         }
@@ -122,6 +145,17 @@ final class CameraManager: NSObject, ObservableObject, AVCaptureDataOutputSynchr
         }
         latestDepth = depth
         latestPixelBuffer = CMSampleBufferGetImageBuffer(syncedVideo.sampleBuffer)
+        // Face detection runs on its own queue so it never blocks the camera.
+        // If it is still busy with the previous frame, this frame is skipped.
+        if !visionBusy, let pb = latestPixelBuffer {
+            visionBusy = true
+            let t = CMTimeGetSeconds(syncedDepth.timestamp)
+            let frameDepth = depth
+            visionQueue.async {
+                self.processVision(depth: frameDepth, pixelBuffer: pb, time: t)
+                self.queue.async { self.visionBusy = false }
+            }
+        }
 
         let map = depth.depthDataMap
         let w = CVPixelBufferGetWidth(map), h = CVPixelBufferGetHeight(map)
@@ -135,7 +169,7 @@ final class CameraManager: NSObject, ObservableObject, AVCaptureDataOutputSynchr
                           w, h, center * 1000, depth.isDepthDataFiltered ? "yes" : "no")
 
         frameCount += 1
-        let image = (frameCount % 3 == 0) ? makeDepthImage(map) : nil
+        let image = (frameCount % 3 == 0 && !wantRGB) ? makeDepthImage(map) : nil
         DispatchQueue.main.async {
             self.status = text
             if let image = image { self.depthImage = image }
@@ -195,43 +229,52 @@ final class CameraManager: NSObject, ObservableObject, AVCaptureDataOutputSynchr
                           cx: m.columns.2.x * s, cy: m.columns.2.y * s)
     }
 
-    // Median of valid depths in a 3x3 patch (meters), nil if none
+    // Median of valid depths in a 3x3 patch (meters). If that patch has no depth
+    // (eyes, nostrils, hair edge), look in a 7x7 patch. nil if there is none.
     private func sampleDepth(_ d: [Float], _ w: Int, _ h: Int, _ u: Float, _ v: Float) -> Float? {
         guard u.isFinite, v.isFinite else { return nil }
         let ui = min(max(Int(u.rounded()), 0), w - 1)
         let vi = min(max(Int(v.rounded()), 0), h - 1)
-        var vals: [Float] = []
-        for y in max(vi - 1, 0)...min(vi + 1, h - 1) {
-            for x in max(ui - 1, 0)...min(ui + 1, w - 1) {
-                let z = d[y * w + x]
-                if z.isFinite && z > 0 { vals.append(z) }
+        for r in [1, 3] {
+            var vals: [Float] = []
+            for y in max(vi - r, 0)...min(vi + r, h - 1) {
+                for x in max(ui - r, 0)...min(ui + r, w - 1) {
+                    let z = d[y * w + x]
+                    if z.isFinite && z > 0 { vals.append(z) }
+                }
+            }
+            if !vals.isEmpty {
+                vals.sort()
+                let n = vals.count
+                return n % 2 == 1 ? vals[n / 2] : (vals[n / 2 - 1] + vals[n / 2]) / 2
             }
         }
-        if vals.isEmpty { return nil }
-        vals.sort()
-        let n = vals.count
-        return n % 2 == 1 ? vals[n / 2] : (vals[n / 2 - 1] + vals[n / 2]) / 2
+        return nil
     }
 
-    // Transposes the sensor-native frame so the face is upright for MediaPipe
-    private func uprightBuffer(from pb: CVPixelBuffer) -> CVPixelBuffer? {
-        let w = CVPixelBufferGetWidth(pb), h = CVPixelBufferGetHeight(pb)
-        let rotated = CIImage(cvPixelBuffer: pb).oriented(.leftMirrored)
-        // keep the image's origin at (0, 0) so it renders into the new buffer
-        let img = rotated.transformed(by: CGAffineTransform(translationX: -rotated.extent.origin.x,
-                                                            y: -rotated.extent.origin.y))
+    // Transposes the sensor-native frame so the face is upright for MediaPipe.
+    // maxSide shrinks the result (landmarks are normalized, so size does not matter).
+    private func uprightBuffer(from pb: CVPixelBuffer, maxSide: CGFloat? = nil) -> CVPixelBuffer? {
+        var img = CIImage(cvPixelBuffer: pb).oriented(.leftMirrored)
+        img = img.transformed(by: CGAffineTransform(translationX: -img.extent.origin.x,
+                                                    y: -img.extent.origin.y))
+        if let m = maxSide {
+            let sc = m / max(img.extent.width, img.extent.height)
+            if sc < 1 { img = img.transformed(by: CGAffineTransform(scaleX: sc, y: sc)) }
+        }
+        let ow = Int(img.extent.width.rounded()), oh = Int(img.extent.height.rounded())
+        var created: CVPixelBuffer?
         let attrs: [String: Any] = [
             kCVPixelBufferCGImageCompatibilityKey as String: true,
             kCVPixelBufferCGBitmapContextCompatibilityKey as String: true
         ]
-        var created: CVPixelBuffer?
-        CVPixelBufferCreate(kCFAllocatorDefault, h, w, kCVPixelFormatType_32BGRA,
+        CVPixelBufferCreate(kCFAllocatorDefault, ow, oh, kCVPixelFormatType_32BGRA,
                             attrs as CFDictionary, &created)
         guard let out = created else { return nil }
         ciContext.render(img, to: out)
         return out
     }
-    
+
     private func landmarks3D(pixelBuffer pb: CVPixelBuffer, depth: [Float], dw: Int, dh: Int,
                              k: Intrinsics) throws -> [SIMD3<Float>?] {
         guard let landmarker = landmarker else { throw FuseError.notLoaded }
@@ -435,6 +478,140 @@ final class CameraManager: NSObject, ObservableObject, AVCaptureDataOutputSynchr
                     self.isCapturing = false
                     self.saveMessage += "Saved \(dir.lastPathComponent)"
                 }
+            }
+        }
+    }
+
+    // MARK: - Live vision: face mesh, status label, recording. Runs on `visionQueue`.
+
+    private func processVision(depth: AVDepthData, pixelBuffer pb: CVPixelBuffer, time: Double) {
+        let ms = Int(time * 1000)
+        guard ms > lastTimestampMs, let vl = videoLandmarker,
+              let small = uprightBuffer(from: pb, maxSide: 640) else { return }
+        lastTimestampMs = ms
+
+        var lms: [NormalizedLandmark] = []
+        if let image = try? MPImage(pixelBuffer: small),
+           let result = try? vl.detect(videoFrame: image, timestampInMilliseconds: ms),
+           let first = result.faceLandmarks.first {
+            lms = first
+        }
+        let norm = lms.map { CGPoint(x: CGFloat($0.x), y: CGFloat($0.y)) }
+
+        // 3D positions in mm, and how many landmarks have a valid depth reading
+        var pts: [SIMD3<Float>?] = []
+        var withDepth = 0
+        var inFrame = true
+        var valid: [Bool] = []
+        var kUsed: Intrinsics?
+        if !lms.isEmpty {
+            let (arr, w, h) = depthArray(depth.depthDataMap)
+            kUsed = scaledIntrinsics(depth.cameraCalibrationData, depthWidth: w)
+            for lm in lms {
+                let inside = lm.x >= 0 && lm.x <= 1 && lm.y >= 0 && lm.y <= 1
+                if !inside { inFrame = false }
+                let u = lm.y * Float(w), v = lm.x * Float(h)
+                if inside, let k = kUsed, let z = sampleDepth(arr, w, h, u, v) {
+                    pts.append(SIMD3<Float>((u - k.cx) * z / k.fx, (v - k.cy) * z / k.fy, z) * 1000)
+                    withDepth += 1
+                    valid.append(true)
+                } else {
+                    pts.append(nil)
+                    valid.append(false)
+                }
+            }
+        }
+
+        var recCount = 0
+        if recording {
+            if lms.isEmpty {
+                recMisses += 1
+            } else {
+                if recFrames.isEmpty { recStart = time; recIntrinsics = kUsed }
+                recFrames.append((time - recStart, pts))
+            }
+            recCount = recFrames.count
+        }
+
+        let label: String
+        let ok: Bool
+        if lms.isEmpty {
+            label = "NO FACE"; ok = false
+        } else if !inFrame {
+            label = "\(withDepth)/\(lms.count) · FACE CUT OFF"; ok = false
+        } else {
+            label = "\(withDepth)/\(lms.count)"; ok = (withDepth == lms.count)
+        }
+
+        var photo: UIImage?
+        if wantRGB {
+            let ci = CIImage(cvPixelBuffer: small)
+            if let cg = ciContext.createCGImage(ci, from: ci.extent) { photo = UIImage(cgImage: cg) }
+        }
+        let misses = recMisses
+        let isRec = recording
+        DispatchQueue.main.async {
+            self.meshPoints = norm
+            self.meshValid = valid
+            self.faceStatus = label
+            self.faceOK = ok
+            if let photo = photo { self.rgbImage = photo }
+            if isRec && recCount % 10 == 0 {
+                self.saveMessage = "Recording: \(recCount) frames, \(misses) without a face"
+            }
+        }
+    }
+
+    func startRecording() {
+        guard !isRecording, !isCapturing else { return }
+        isRecording = true
+        saveMessage = "Recording... start with a neutral face"
+        savedFiles = []
+        visionQueue.async {
+            self.recFrames = []
+            self.recMisses = 0
+            self.recording = true
+        }
+    }
+
+    func stopRecording() {
+        guard isRecording else { return }
+        visionQueue.async {
+            self.recording = false
+            let frames = self.recFrames, misses = self.recMisses, k = self.recIntrinsics
+            let dir = self.newSessionDir("recording")
+            var message: String
+            var files: [URL] = []
+            do {
+                try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+                func r2(_ v: Float) -> Double { (Double(v) * 100).rounded() / 100 }
+                let frameJSON: [Any] = frames.map { f in
+                    let pts: [Any] = f.pts.map { p -> Any in
+                        if let p = p { return [r2(p.x), r2(p.y), r2(p.z)] }
+                        return NSNull()
+                    }
+                    return ["t": (f.t * 1000).rounded() / 1000, "pts": pts] as [String: Any]
+                }
+                var root: [String: Any] = ["units": "mm", "frame_count": frames.count,
+                                           "frames_without_face": misses, "frames": frameJSON]
+                if let k = k {
+                    root["fx"] = Double(k.fx); root["fy"] = Double(k.fy)
+                    root["cx"] = Double(k.cx); root["cy"] = Double(k.cy)
+                }
+                let url = dir.appendingPathComponent("landmarks_sequence_mm.json")
+                try JSONSerialization.data(withJSONObject: root, options: []).write(to: url)
+                files = [url]
+                let secs = frames.last?.t ?? 0
+                message = String(format: "Saved %d frames over %.1f s (%.0f fps), %d without a face\n%@",
+                                 frames.count, secs, secs > 0 ? Double(frames.count) / secs : 0,
+                                 misses, dir.lastPathComponent)
+            } catch {
+                message = "Save failed: \(error.localizedDescription)"
+            }
+            DispatchQueue.main.async {
+                self.isRecording = false
+                self.saveMessage = message
+                self.savedFiles = files
             }
         }
     }
