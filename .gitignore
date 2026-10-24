@@ -223,3 +223,13 @@ build/
 .DS_Store
 captures/
 Pods/
+
+# Maya exports of the lab template (regenerable; lab data, see bts-proj1/NOTICE).
+# The scene itself is tracked through Git LFS (.gitattributes).
+template_export/
+
+# Pipeline outputs: keep metrics.json (the analysis dataset), drop the heavy files
+runs/**
+!runs/**/
+!runs/**/metrics.json
+cache/

@@ -1,0 +1,26 @@
+{
+  "format": 1,
+  "scene": {
+    "path": "v68 neutral v13.8 after housekeeping.mb",
+    "md5": "b174b0d59a89495c6f57f779b8063b27",
+    "bytes": 432124944,
+    "maya": "2023",
+    "ziva": "2.2.0-hotfix2",
+    "note": "Tracked through Git LFS. Byte-identical to bts-proj1/Eugene-lab-summer26/Maya file asset/. Lab asset, not for redistribution (bts-proj1/NOTICE)."
+  },
+  "npz_source": {
+    "dir_env": "BTS_LAB_DATA",
+    "default_dir": "../bts-proj1/data/lab",
+    "provenance": "Exported by bts-proj1/export/export_meshes.py from a 451 MB copy of the scene that no longer exists. Provisional until a re-export from the scene above matches.",
+    "units": "mm",
+    "unit_scale": 0.962
+  },
+  "meshes": [
+    {"name": "skin_cloth_copy_v5_pull_back", "role": "skin",   "n_verts": 15905, "n_faces": 31225, "closed": false, "optional": false},
+    {"name": "middleres_Jaw",                "role": "bone",   "n_verts": 7426,  "n_faces": 14848, "closed": true,  "optional": false},
+    {"name": "middleres_TeethUp",            "role": "bone",   "n_verts": 24608, "n_faces": 49152, "closed": true,  "optional": false},
+    {"name": "middleres_TeethDown",          "role": "bone",   "n_verts": 24608, "n_faces": 49152, "closed": true,  "optional": false},
+    {"name": "middleres_OrbicularisOris",    "role": "muscle", "n_verts": 10240, "n_faces": 20480, "closed": true,  "optional": false},
+    {"name": "middleres_skull",              "role": "bone",   "n_verts": null,  "n_faces": null,  "closed": true,  "optional": true}
+  ]
+}
