@@ -1,0 +1,199 @@
+{
+  "subject": "template",
+  "pathway": "features",
+  "script": "checks/template_features.py",
+  "run_id": "20261024T223938_b2de",
+  "status": "ok",
+  "error": null,
+  "traceback": null,
+  "started_at": "2026-10-24T22:39:38",
+  "wall_clock_s": 1.229,
+  "git": {
+    "sha": "0e3a465a3e3ce246520e64da9cdb58772a9e1a41",
+    "dirty": true
+  },
+  "python": "3.13.3",
+  "packages": {
+    "numpy": "2.5.4",
+    "scipy": "1.18.1",
+    "trimesh": "5.2.0"
+  },
+  "metrics": {
+    "provenance": "Exported by bts-proj1/export/export_meshes.py from a 451 MB copy of the scene that no longer exists. Provisional until a re-export from the scene above matches.",
+    "norms_source": "Weinberg SM, Raffensperger ZD, Kesterke MJ, et al. The 3D Facial Norms Database: Part 1. A Web-Based Craniofacial Anthropometric and Image Repository for the Clinical and Research Community. Cleft Palate Craniofac J. 2016;53(6):e185-e197. doi:10.1597/15-199",
+    "sex": "male",
+    "k": 1.4202486019110458,
+    "corrected_mm_per_unit_if_scale_error": 0.6773462045345866,
+    "post_hoc_diagnostic": {
+      "k_without_eye_region": 1.262953773743265,
+      "mm_per_unit_implied": 0.7617064218817218,
+      "eye_z_after_k_without_eye_region": {
+        "incanthwidth": 3.9522514713690953,
+        "outcanthwidth": 5.99963885213069,
+        "palpfislength_l": 3.404844063102293,
+        "palpfislength_r": 3.376315300428628
+      }
+    },
+    "verdict": "stylised",
+    "outliers_after_k": [
+      "incanthwidth",
+      "nasalheight",
+      "outcanthwidth",
+      "upfaceheight"
+    ],
+    "rule": {
+      "outlier_sd": 2.0,
+      "scale_error_frac": 0.1
+    },
+    "ambiguous": {
+      "labfiswidth": "The skin's mouth opening wraps about 24 mm into the mouth, so its corners lie behind the visible commissures; the loop width over-states ch-ch."
+    },
+    "rows": {
+      "palpfislength_r": {
+        "template_mm": 44.51117605493653,
+        "norm_mean_mm": 28.93,
+        "norm_sd_mm": 1.87,
+        "ratio": 1.538581958345542,
+        "z": 8.332179708522206,
+        "used_in_fit": true,
+        "z_after_k": 1.288990272150285
+      },
+      "palpfislength_l": {
+        "template_mm": 44.36656040663652,
+        "norm_mean_mm": 28.66,
+        "norm_sd_mm": 1.9,
+        "ratio": 1.548030719003368,
+        "z": 8.266610740335013,
+        "used_in_fit": true,
+        "z_after_k": 1.3571513840079419
+      },
+      "incanthwidth": {
+        "template_mm": 55.936947948892,
+        "norm_mean_mm": 32.75,
+        "norm_sd_mm": 2.92,
+        "ratio": 1.7079984106531907,
+        "z": 7.940735598935616,
+        "used_in_fit": true,
+        "z_after_k": 2.2723704135329954
+      },
+      "outcanthwidth": {
+        "template_mm": 142.2573114278369,
+        "norm_mean_mm": 88.94,
+        "norm_sd_mm": 3.95,
+        "ratio": 1.5994750554063064,
+        "z": 13.498053526034656,
+        "used_in_fit": true,
+        "z_after_k": 2.8414352911760856
+      },
+      "labfiswidth": {
+        "template_mm": 63.20301356487109,
+        "norm_mean_mm": 50.75,
+        "norm_sd_mm": 3.8,
+        "ratio": 1.245379577632928,
+        "z": 3.277108832860814,
+        "used_in_fit": false,
+        "z_after_k": -1.644375382067669
+      },
+      "nasalheight": {
+        "template_mm": 68.2267595303221,
+        "norm_mean_mm": 56.62,
+        "norm_sd_mm": 3.95,
+        "ratio": 1.204993986759486,
+        "z": 2.9384201342587595,
+        "used_in_fit": true,
+        "z_after_k": -2.1725054302593194
+      },
+      "upfaceheight": {
+        "template_mm": 98.00444268433824,
+        "norm_mean_mm": 78.09,
+        "norm_sd_mm": 4.53,
+        "ratio": 1.255019114923015,
+        "z": 4.396124212878198,
+        "used_in_fit": true,
+        "z_after_k": -2.0054895568549833
+      },
+      "lowfaceheight": {
+        "template_mm": 95.78519862469363,
+        "norm_mean_mm": 73.0,
+        "norm_sd_mm": 5.34,
+        "ratio": 1.312126008557447,
+        "z": 4.266891128219782,
+        "used_in_fit": true,
+        "z_after_k": -1.0407194867458283
+      },
+      "morphfaceheight": {
+        "template_mm": 162.87159655867455,
+        "norm_mean_mm": 127.03,
+        "norm_sd_mm": 6.6,
+        "ratio": 1.2821506459787022,
+        "z": 5.430544933132508,
+        "used_in_fit": true,
+        "z_after_k": -1.871480224987928
+      }
+    },
+    "female_check": "stylised",
+    "landmarks_mm": {
+      "en_r": [
+        27.655,
+        19.595,
+        8.259
+      ],
+      "ex_r": [
+        70.885,
+        21.355,
+        18.717
+      ],
+      "en_l": [
+        -28.278,
+        19.476,
+        8.904
+      ],
+      "ex_l": [
+        -71.372,
+        21.394,
+        19.279
+      ],
+      "ch_r": [
+        31.23,
+        -83.312,
+        -0.696
+      ],
+      "ch_l": [
+        -31.963,
+        -83.93,
+        -1.628
+      ],
+      "sto": [
+        -0.114,
+        -81.715,
+        -18.146
+      ],
+      "n": [
+        -0.415,
+        16.199,
+        -22.352
+      ],
+      "prn": [
+        -0.415,
+        -28.162,
+        -46.235
+      ],
+      "sn": [
+        -0.415,
+        -51.935,
+        -25.901
+      ],
+      "ls": [
+        -0.415,
+        -72.092,
+        -25.828
+      ],
+      "gn": [
+        -0.415,
+        -146.044,
+        -8.058
+      ]
+    },
+    "status_note": "provisional: npz exported from a different copy of the scene"
+  }
+}
