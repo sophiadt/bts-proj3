@@ -27,7 +27,14 @@ SMOOTHING = 1.0
 
 
 def build_field(skin_pts, skin_disp, n_centres=N_CENTRES, smoothing=SMOOTHING, seed=0):
-    """Displacement field from skin positions (mm) and their displacements."""
+    """Displacement field from skin positions (mm) and their displacements.
+
+    Smoothed on purpose. An exact field (all skin vertices, smoothing 0, local
+    150-neighbour solves) was tried on the synthetic fit: it folded thousands
+    of muscle triangles, made the speech animation 5.6x faster than the
+    template's, and left the skin's 0.66 mm rest gap in Maya unchanged -- so
+    that gap does not come from this field.
+    """
     rng = np.random.default_rng(seed)
     idx = np.arange(len(skin_pts))
     if len(idx) > n_centres:
