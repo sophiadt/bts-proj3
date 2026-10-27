@@ -1,0 +1,22 @@
+{
+  "subject": "synthetic_ok",
+  "pathway": "sim_check",
+  "script": "rig/sim_check.py",
+  "run_id": "20261027T131903_35d2",
+  "status": "failed",
+  "error": "RuntimeError('File not found: \"template_export/scenes/synthetic_ok.mb\"\\n')",
+  "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\syd3\\bts-proj3\\rig\\sim_check.py\", line 64, in main\n    muted = speeds(args.scene, 10, True, False)\n  File \"C:\\Users\\syd3\\bts-proj3\\rig\\sim_check.py\", line 34, in speeds\n    M.open_scene(scene, check_md5=check_md5)\n  File \"C:\\Users\\syd3\\bts-proj3\\rig\\_maya.py\", line 68, in open_scene\n    cmds.file(str(path), open=True, force=True, ignoreVersion=True)\nRuntimeError: File not found: \"template_export/scenes/synthetic_ok.mb\"\n\n",
+  "started_at": "2026-10-27T13:19:03",
+  "wall_clock_s": 0.181,
+  "git": {
+    "sha": "7580e8138f0e02440529439842c243b098e6085f",
+    "dirty": true
+  },
+  "python": "3.9.7",
+  "packages": {
+    "numpy": "2.0.2",
+    "scipy": "1.13.1",
+    "trimesh": null
+  },
+  "metrics": {}
+}

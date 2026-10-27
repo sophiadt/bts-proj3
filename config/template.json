@@ -10,17 +10,427 @@
   },
   "npz_source": {
     "dir_env": "BTS_LAB_DATA",
-    "default_dir": "../bts-proj1/data/lab",
-    "provenance": "Exported by bts-proj1/export/export_meshes.py from a 451 MB copy of the scene that no longer exists. Provisional until a re-export from the scene above matches.",
+    "default_dir": "template_export, else ../bts-proj1/data/lab",
+    "provenance": "rig/export_rest.py from the scene above (md5 b174b0d59a89495c6f57f779b8063b27); frame 0; vertices = solved output, rest_vertices = Ziva rest input. Spot check against landmarks_lab.json <= 0.0004 mm, so the old bts-proj1 exports match.",
     "units": "mm",
     "unit_scale": 0.962
   },
   "meshes": [
-    {"name": "skin_cloth_copy_v5_pull_back", "role": "skin",   "n_verts": 15905, "n_faces": 31225, "closed": false, "optional": false},
-    {"name": "middleres_Jaw",                "role": "bone",   "n_verts": 7426,  "n_faces": 14848, "closed": true,  "optional": false},
-    {"name": "middleres_TeethUp",            "role": "bone",   "n_verts": 24608, "n_faces": 49152, "closed": true,  "optional": false},
-    {"name": "middleres_TeethDown",          "role": "bone",   "n_verts": 24608, "n_faces": 49152, "closed": true,  "optional": false},
-    {"name": "middleres_OrbicularisOris",    "role": "muscle", "n_verts": 10240, "n_faces": 20480, "closed": true,  "optional": false},
-    {"name": "middleres_skull",              "role": "bone",   "n_verts": null,  "n_faces": null,  "closed": true,  "optional": true}
+    {
+      "name": "jack01_MODEL1__jack01_c_loTeeth01_geo",
+      "role": "bone",
+      "n_verts": 4483,
+      "n_faces": 8352,
+      "closed": false,
+      "optional": true
+    },
+    {
+      "name": "jack01_MODEL1__jack01_c_tongue01_geo",
+      "role": "bone",
+      "n_verts": 236,
+      "n_faces": 426,
+      "closed": false,
+      "optional": true
+    },
+    {
+      "name": "jack01_c_head01_high_geo_bone",
+      "role": "bone",
+      "n_verts": 92889,
+      "n_faces": 185552,
+      "closed": false,
+      "optional": true
+    },
+    {
+      "name": "middleres_AlarCartidge",
+      "role": "tissue",
+      "n_verts": 1226,
+      "n_faces": 2448,
+      "closed": true,
+      "optional": true
+    },
+    {
+      "name": "middleres_Corrugator_l",
+      "role": "tissue",
+      "n_verts": 3248,
+      "n_faces": 6492,
+      "closed": true,
+      "optional": true
+    },
+    {
+      "name": "middleres_Corrugator_r",
+      "role": "tissue",
+      "n_verts": 3248,
+      "n_faces": 6492,
+      "closed": true,
+      "optional": true
+    },
+    {
+      "name": "middleres_DepressorLabiiInferioris_l",
+      "role": "tissue",
+      "n_verts": 702,
+      "n_faces": 1400,
+      "closed": true,
+      "optional": true
+    },
+    {
+      "name": "middleres_DepressorLabiiInferioris_r",
+      "role": "tissue",
+      "n_verts": 702,
+      "n_faces": 1400,
+      "closed": true,
+      "optional": true
+    },
+    {
+      "name": "middleres_DepressorSeptiNasi",
+      "role": "tissue",
+      "n_verts": 576,
+      "n_faces": 1148,
+      "closed": true,
+      "optional": true
+    },
+    {
+      "name": "middleres_DepressorSupercilii_l",
+      "role": "tissue",
+      "n_verts": 1240,
+      "n_faces": 2476,
+      "closed": true,
+      "optional": true
+    },
+    {
+      "name": "middleres_DepressorSupercilii_r",
+      "role": "tissue",
+      "n_verts": 1240,
+      "n_faces": 2476,
+      "closed": true,
+      "optional": true
+    },
+    {
+      "name": "middleres_Eyes_l_simple",
+      "role": "tissue",
+      "n_verts": 382,
+      "n_faces": 760,
+      "closed": true,
+      "optional": true
+    },
+    {
+      "name": "middleres_Eyes_r_simple",
+      "role": "tissue",
+      "n_verts": 382,
+      "n_faces": 760,
+      "closed": true,
+      "optional": true
+    },
+    {
+      "name": "middleres_Frontalis",
+      "role": "tissue",
+      "n_verts": 13448,
+      "n_faces": 26892,
+      "closed": true,
+      "optional": true
+    },
+    {
+      "name": "middleres_Jaw",
+      "role": "bone",
+      "n_verts": 7426,
+      "n_faces": 14848,
+      "closed": true,
+      "optional": false
+    },
+    {
+      "name": "middleres_LateralCartige",
+      "role": "tissue",
+      "n_verts": 5122,
+      "n_faces": 10240,
+      "closed": true,
+      "optional": true
+    },
+    {
+      "name": "middleres_LevatorLabiiSuperioris_l",
+      "role": "tissue",
+      "n_verts": 1186,
+      "n_faces": 2368,
+      "closed": true,
+      "optional": true
+    },
+    {
+      "name": "middleres_LevatorLabiiSuperioris_r",
+      "role": "tissue",
+      "n_verts": 1186,
+      "n_faces": 2368,
+      "closed": true,
+      "optional": true
+    },
+    {
+      "name": "middleres_Mentalis",
+      "role": "tissue",
+      "n_verts": 1210,
+      "n_faces": 2416,
+      "closed": true,
+      "optional": true
+    },
+    {
+      "name": "middleres_NasalisTransverse",
+      "role": "tissue",
+      "n_verts": 3596,
+      "n_faces": 7188,
+      "closed": true,
+      "optional": true
+    },
+    {
+      "name": "middleres_NostrilWing",
+      "role": "tissue",
+      "n_verts": 4352,
+      "n_faces": 8696,
+      "closed": true,
+      "optional": true
+    },
+    {
+      "name": "middleres_OrbicularisOculi_l",
+      "role": "tissue",
+      "n_verts": 8064,
+      "n_faces": 16128,
+      "closed": true,
+      "optional": true
+    },
+    {
+      "name": "middleres_OrbicularisOculi_r",
+      "role": "tissue",
+      "n_verts": 8064,
+      "n_faces": 16128,
+      "closed": true,
+      "optional": true
+    },
+    {
+      "name": "middleres_OrbicularisOris",
+      "role": "tissue",
+      "n_verts": 10240,
+      "n_faces": 20480,
+      "closed": true,
+      "optional": false
+    },
+    {
+      "name": "middleres_Procerus",
+      "role": "tissue",
+      "n_verts": 4724,
+      "n_faces": 9444,
+      "closed": true,
+      "optional": true
+    },
+    {
+      "name": "middleres_TeethDown",
+      "role": "bone",
+      "n_verts": 24608,
+      "n_faces": 49152,
+      "closed": true,
+      "optional": false
+    },
+    {
+      "name": "middleres_TeethUp",
+      "role": "bone",
+      "n_verts": 24608,
+      "n_faces": 49152,
+      "closed": true,
+      "optional": false
+    },
+    {
+      "name": "middleres_Temporalis_l",
+      "role": "tissue",
+      "n_verts": 10038,
+      "n_faces": 20072,
+      "closed": true,
+      "optional": true
+    },
+    {
+      "name": "middleres_Temporalis_r",
+      "role": "tissue",
+      "n_verts": 10038,
+      "n_faces": 20072,
+      "closed": true,
+      "optional": true
+    },
+    {
+      "name": "middleres_ZygomaticusMajor_l",
+      "role": "tissue",
+      "n_verts": 1186,
+      "n_faces": 2368,
+      "closed": true,
+      "optional": true
+    },
+    {
+      "name": "middleres_ZygomaticusMajor_r",
+      "role": "tissue",
+      "n_verts": 1186,
+      "n_faces": 2368,
+      "closed": true,
+      "optional": true
+    },
+    {
+      "name": "middleres_ZygomaticusMinor_l",
+      "role": "tissue",
+      "n_verts": 1186,
+      "n_faces": 2368,
+      "closed": true,
+      "optional": true
+    },
+    {
+      "name": "middleres_ZygomaticusMinor_r",
+      "role": "tissue",
+      "n_verts": 1186,
+      "n_faces": 2368,
+      "closed": true,
+      "optional": true
+    },
+    {
+      "name": "middleres_skull",
+      "role": "bone",
+      "n_verts": 28414,
+      "n_faces": 56832,
+      "closed": true,
+      "optional": true
+    },
+    {
+      "name": "polySurface1",
+      "role": "tissue",
+      "n_verts": 1364,
+      "n_faces": 2724,
+      "closed": true,
+      "optional": true
+    },
+    {
+      "name": "polySurface10",
+      "role": "tissue",
+      "n_verts": 968,
+      "n_faces": 1932,
+      "closed": true,
+      "optional": true
+    },
+    {
+      "name": "polySurface11",
+      "role": "tissue",
+      "n_verts": 1066,
+      "n_faces": 2128,
+      "closed": true,
+      "optional": true
+    },
+    {
+      "name": "polySurface12",
+      "role": "tissue",
+      "n_verts": 1066,
+      "n_faces": 2128,
+      "closed": true,
+      "optional": true
+    },
+    {
+      "name": "polySurface13",
+      "role": "tissue",
+      "n_verts": 1764,
+      "n_faces": 3524,
+      "closed": true,
+      "optional": true
+    },
+    {
+      "name": "polySurface14",
+      "role": "tissue",
+      "n_verts": 1764,
+      "n_faces": 3524,
+      "closed": true,
+      "optional": true
+    },
+    {
+      "name": "polySurface15",
+      "role": "bone",
+      "n_verts": 3577,
+      "n_faces": 7040,
+      "closed": false,
+      "optional": true
+    },
+    {
+      "name": "polySurface16",
+      "role": "bone",
+      "n_verts": 3577,
+      "n_faces": 7040,
+      "closed": false,
+      "optional": true
+    },
+    {
+      "name": "polySurface2",
+      "role": "tissue",
+      "n_verts": 1364,
+      "n_faces": 2724,
+      "closed": true,
+      "optional": true
+    },
+    {
+      "name": "polySurface3",
+      "role": "tissue",
+      "n_verts": 254,
+      "n_faces": 504,
+      "closed": true,
+      "optional": true
+    },
+    {
+      "name": "polySurface4",
+      "role": "tissue",
+      "n_verts": 254,
+      "n_faces": 504,
+      "closed": true,
+      "optional": true
+    },
+    {
+      "name": "polySurface5",
+      "role": "tissue",
+      "n_verts": 2900,
+      "n_faces": 5796,
+      "closed": true,
+      "optional": true
+    },
+    {
+      "name": "polySurface6",
+      "role": "tissue",
+      "n_verts": 2900,
+      "n_faces": 5796,
+      "closed": true,
+      "optional": true
+    },
+    {
+      "name": "polySurface7",
+      "role": "tissue",
+      "n_verts": 856,
+      "n_faces": 1708,
+      "closed": true,
+      "optional": true
+    },
+    {
+      "name": "polySurface8",
+      "role": "tissue",
+      "n_verts": 856,
+      "n_faces": 1708,
+      "closed": true,
+      "optional": true
+    },
+    {
+      "name": "polySurface9",
+      "role": "tissue",
+      "n_verts": 968,
+      "n_faces": 1932,
+      "closed": true,
+      "optional": true
+    },
+    {
+      "name": "skin_cloth",
+      "role": "cloth",
+      "n_verts": 47142,
+      "n_faces": 93440,
+      "closed": false,
+      "optional": true
+    },
+    {
+      "name": "skin_cloth_copy_v5_pull_back",
+      "role": "cloth",
+      "n_verts": 15905,
+      "n_faces": 31225,
+      "closed": false,
+      "optional": false
+    }
   ]
 }

@@ -1,0 +1,46 @@
+{
+  "subject": "template",
+  "pathway": "fixture",
+  "script": "pipeline/fixture.py",
+  "run_id": "20261027T124558_840c",
+  "status": "ok",
+  "error": null,
+  "traceback": null,
+  "started_at": "2026-10-27T12:45:58",
+  "wall_clock_s": 1.271,
+  "git": {
+    "sha": "7580e8138f0e02440529439842c243b098e6085f",
+    "dirty": true
+  },
+  "python": "3.9.7",
+  "packages": {
+    "numpy": "2.0.2",
+    "scipy": "1.13.1",
+    "trimesh": null
+  },
+  "metrics": {
+    "checks": {
+      "left_right_same_side": [],
+      "landmark33_x_mm": 72.41685847894458,
+      "upper_lip_below_mouth": [],
+      "lower_lip_above_mouth": [],
+      "n_mapped": 468,
+      "n_distinct_vertices": 452,
+      "pass": true
+    },
+    "scale": 1.4501826778903686,
+    "weight_classes": {
+      "high": 74,
+      "low": 280,
+      "zero": 124
+    },
+    "snap_mm_median": 0.8186605738212677,
+    "snap_mm_p95": 4.064348365427236,
+    "nonrigid_last": {
+      "alpha": 2.0,
+      "accepted": 392,
+      "lm_rms_mm": 0.5135935076478875,
+      "data_rms_mm": 0.9958098517509893
+    }
+  }
+}

@@ -233,3 +233,6 @@ runs/**
 !runs/**/
 !runs/**/metrics.json
 cache/
+
+# pytest for mayapy, installed with pip --target (mayapy itself untouched)
+.pytest-lib/

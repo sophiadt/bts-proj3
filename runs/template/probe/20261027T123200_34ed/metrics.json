@@ -1,0 +1,52 @@
+{
+  "subject": "template",
+  "pathway": "probe",
+  "script": "rig/probe_scene.py",
+  "run_id": "20261027T123200_34ed",
+  "status": "ok",
+  "error": null,
+  "traceback": null,
+  "started_at": "2026-10-27T12:32:00",
+  "wall_clock_s": 52.223,
+  "git": {
+    "sha": "7580e8138f0e02440529439842c243b098e6085f",
+    "dirty": true
+  },
+  "python": "3.9.7",
+  "packages": {
+    "numpy": "2.0.2",
+    "scipy": "1.13.1",
+    "trimesh": null
+  },
+  "metrics": {
+    "scene_md5": "b174b0d59a89495c6f57f779b8063b27",
+    "counts": {
+      "zSolver": 1,
+      "zSolverTransform": 1,
+      "zMaterial": 43,
+      "zTissue": 41,
+      "zFiber": 18,
+      "zBone": 11,
+      "zCloth": 2,
+      "zTet": 41,
+      "zAttachment": 140,
+      "zEmbedder": 1,
+      "zGeo": 55,
+      "zRestShape": 0,
+      "zLineOfAction": 0,
+      "zRivetToBone": 0
+    },
+    "n_bodies": 1,
+    "bodies": {
+      "middleres_OrbicularisOris": {
+        "role": "cloth",
+        "n_verts": 10240,
+        "n_faces": 20480,
+        "closed": true,
+        "rest_target": "|middleres_OrbicularisOris|middleres_OrbicularisOrisShapeOrig",
+        "rest_vs_output_max_mm": 1.8348693870962052e-06
+      }
+    },
+    "attachment_array_attrs": null
+  }
+}
