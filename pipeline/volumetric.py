@@ -43,6 +43,59 @@ def build_field(skin_pts, skin_disp, n_centres=N_CENTRES, smoothing=SMOOTHING, s
                            smoothing=smoothing, degree=1)
 
 
+def inward_normals(skin, faces, centre):
+    """Unit skin normals pointing into the head (toward `centre`)."""
+    n = geo.vertex_normals(skin, faces)
+    return n * -np.sign(((skin - centre) * n).sum(axis=1))[:, None]
+
+
+def bone_from_skin(skin0, skin1, faces, sample_idx, bone0, bone_faces, max_mm=40.0, seed=0):
+    """Similarity for one bone that keeps the skin-to-bone depth under the scan.
+
+    The phone sees skin, never bone, so the bone is placed by what the scan
+    does constrain: at skin vertices the camera saw, the template's depth to
+    this bone straight inward (already at subject scale) is laid off again
+    under the fitted skin, and one similarity (rotation, translation, uniform
+    scale) is fitted to those target points, with one robust pass. The back
+    of the head, which no camera saw, plays no part.
+
+    skin0/skin1: scaled-template and fitted skin (V,3); sample_idx: vertices to
+    cast from. -> (s, R, t), info  or  (None, info) if too few rays hit.
+    """
+    n0 = geo.vertex_normals(skin0, faces)
+    centre = bone0.mean(axis=0)
+    sgn = -np.sign(((skin0 - centre) * n0).sum(axis=1))
+    in0 = n0 * sgn[:, None]
+    lo = skin0[sample_idx].min(axis=0) - max_mm
+    hi = skin0[sample_idx].max(axis=0) + max_mm
+    cen = bone0[bone_faces].mean(axis=1)
+    near = ((cen > lo) & (cen < hi)).all(axis=1)
+    t0 = geo.ray_hit_distance(skin0[sample_idx], in0[sample_idx], bone0, bone_faces[near], max_dist=max_mm)
+    hit = np.isfinite(t0)
+    info = {"n_rays": int(len(sample_idx)), "n_hits": int(hit.sum())}
+    if hit.sum() < 30:
+        return None, info
+    idx, t0 = np.asarray(sample_idx)[hit], t0[hit]
+    n1 = geo.vertex_normals(skin1, faces)[idx]
+    in1 = n1 * np.sign((n1 * in0[idx]).sum(axis=1))[:, None]
+    h0 = skin0[idx] + in0[idx] * t0[:, None]
+    h1 = skin1[idx] + in1 * t0[:, None]
+    s, R, t = similarity_transform(h0, h1)
+    res = np.linalg.norm(apply_similarity(h0, s, R, t) - h1, axis=1)
+    med = np.median(res)
+    keep = res <= max(med + 3.0 * 1.4826 * np.median(np.abs(res - med)), 2.0)
+    if keep.sum() >= 30 and not keep.all():
+        s, R, t = similarity_transform(h0[keep], h1[keep])
+        res = np.linalg.norm(apply_similarity(h0, s, R, t) - h1, axis=1)
+    info.update({"extra_scale": float(s),
+                 "rot_deg": float(np.degrees(np.arccos(np.clip((np.trace(R) - 1) / 2, -1, 1)))),
+                 "depth_template_median_mm": float(np.median(t0)),
+                 "target_residual_median_mm": float(np.median(res[keep])),
+                 "target_residual_p95_mm": float(np.percentile(res[keep], 95)),
+                 "n_used": int(keep.sum())})
+    return (s, R, t), info
+
+
 def eval_field(field, pts, chunk=20000):
     pts = np.asarray(pts, dtype=np.float64)
     return np.concatenate([field(pts[s:s + chunk]) for s in range(0, len(pts), chunk)]) if len(pts) else pts

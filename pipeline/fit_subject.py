@@ -35,8 +35,16 @@ from pipeline import canonical as mp                   # noqa: E402
 from pipeline import capture as cap                    # noqa: E402
 from pipeline import fixture as fx                     # noqa: E402
 from pipeline import merge_views, mirror_check, nonrigid, volumetric  # noqa: E402
+from core.similarity import apply_similarity                # noqa: E402
+from core.geometry import ray_hit_distance as geo_ray       # noqa: E402
 
 SKULL = "middleres_skull"
+JAW = "middleres_Jaw"
+# Bones placed from skin depth, and the bodies that move rigidly with them
+# (TeethUp follows the skull through wrap26; TeethDown is skinned to jaw01).
+BONE_GROUPS = {SKULL: [SKULL, "middleres_TeethUp"], JAW: [JAW, "middleres_TeethDown"]}
+BONE_RAYS = 3000
+BONE_CENTRES = 800
 LM_WEIGHT = 20.0
 NONRIGID = dict(schedule=(200.0, 100.0, 50.0, 20.0, 10.0, 5.0, 2.0), iters_per_stage=3, max_dist=10.0)
 COVERAGE_MM = 3.0
@@ -145,19 +153,71 @@ def fit(capture_dir, subject_id, out_root=None, do_relabel=False, force=False, v
                 None if n["cloud_to_skin_p95_mm"] is None else round(n["cloud_to_skin_p95_mm"], 2),
                 n["skin_coverage_frac"]))
 
-        # 4. volumetric warp
-        field = volumetric.build_field(X0, d_skin)
+        # 4a. bones from skin depth: skull and jaw placed so the template's
+        # skin-to-bone depth (at subject scale) holds under the fitted skin,
+        # judged only where the camera saw the face. Each sampled skin vertex
+        # belongs to whichever bone its inward ray hits first.
+        rng = np.random.default_rng(0)
+        seen = np.flatnonzero(face_region & np.isfinite(near))
+        sample = np.sort(rng.choice(seen, min(BONE_RAYS, len(seen)), replace=False)) if len(seen) else seen
+        inward = volumetric.inward_normals(X0, F, scaled[SKULL]["rest"].mean(axis=0))
+        depth = {}
+        for bone in BONE_GROUPS:
+            bv, bf = scaled[bone]["rest"], bodies[bone]["faces"]
+            depth[bone] = geo_ray(X0[sample], inward[sample], bv, bf, max_dist=40.0)
+        stack = np.stack([depth[b] for b in BONE_GROUPS])
+        owner = np.where(np.isfinite(stack).any(axis=0), np.argmin(stack, axis=0), -1)
+        sims, bone_info = {}, {}
+        for gi, bone in enumerate(BONE_GROUPS):
+            sim, info = volumetric.bone_from_skin(X0, X, F, sample[owner == gi], scaled[bone]["rest"],
+                                                  bodies[bone]["faces"])
+            bone_info[bone] = info
+            if sim is not None:
+                for member in BONE_GROUPS[bone]:
+                    sims[member] = sim
+        M["bones_from_skin"] = bone_info
+        if verbose:
+            for b, i in bone_info.items():
+                print("{0}: extra scale {1}, rotation {2} deg, depth-target residual median {3} mm ({4} rays)".format(
+                    b, round(i.get("extra_scale", float("nan")), 3), round(i.get("rot_deg", float("nan")), 1),
+                    round(i.get("target_residual_median_mm", float("nan")), 2), i["n_hits"]))
+
+        # 4b. one field for everything else, pinned at the skin AND at the
+        # moved bone surfaces near the face, so muscle and fat fill the space
+        # between the two layers instead of being stretched through the bone.
+        sk = np.sort(rng.choice(len(X0), min(volumetric.N_CENTRES, len(X0)), replace=False))
+        pts, disp = [X0[sk]], [d_skin[sk]]
+        lo, hi = X0[sample].min(axis=0) - 40.0, X0[sample].max(axis=0) + 40.0
+        for bone in BONE_GROUPS:
+            if bone not in sims:
+                continue
+            bv = scaled[bone]["rest"]
+            cand = np.flatnonzero(((bv > lo) & (bv < hi)).all(axis=1))
+            pick = np.sort(rng.choice(cand, min(BONE_CENTRES, len(cand)), replace=False)) if len(cand) else cand
+            pts.append(bv[pick])
+            disp.append(apply_similarity(bv[pick], *sims[bone]) - bv[pick])
+        pts, disp = np.concatenate(pts), np.concatenate(disp)
+        field = volumetric.build_field(pts, disp, n_centres=len(pts))
+
         new_rest, per_body = {}, {}
-        sims = {}
         for k, b in scaled.items():
             if k == fx.SKIN:
-                new_rest[k] = b["rest"] + d_skin               # per vertex: rest and output share topology
+                # The rig adds the template's own output-minus-rest offset (the
+                # forehead "pull_back", up to 16.6 mm) as a fixed amount that
+                # does not scale with the head (round trip: 0.83 mm at 1.05x and
+                # 4.16 mm at 0.75x on the strip = 5% and 25% of 16.6 mm). So
+                # rest = wanted output - that offset, and Maya shows X.
+                new_rest[k] = X - (bodies[k]["out"] - bodies[k]["rest"])
                 per_body[k] = {"disp_max_mm": float(np.linalg.norm(d_skin, axis=1).max())}
                 continue
-            new_rest[k], info = volumetric.warp_body(bodies[k]["role"], b["rest"], field)
-            if "similarity" in info:
-                sims[k] = info.pop("similarity")
-            per_body[k] = info
+            if k in sims:
+                new_rest[k] = apply_similarity(b["rest"], *sims[k])
+                per_body[k] = {"from": "skin depth", "bone_scale": bone_info.get(k, {}).get("extra_scale")}
+            else:
+                new_rest[k], info = volumetric.warp_body(bodies[k]["role"], b["rest"], field)
+                if "similarity" in info:
+                    sims[k] = info.pop("similarity")
+                per_body[k] = info
             per_body[k].update(volumetric.flip_report(b["rest"], new_rest[k], bodies[k]["faces"]))
         per_body[fx.SKIN].update(volumetric.flip_report(X0, X, F))
         jnames = sorted(sjoints)

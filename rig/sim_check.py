@@ -1,13 +1,19 @@
-"""Gate: does a written rig sit at its new rest and simulate stably?
+"""Gate: does a written rig show the fitted head, keep the lab rig's mesh, and simulate?
 
-  rest      animation muted: frame-0 output of every registered body vs the
-            rest written for it (p99, mm), then settle to frame 10
+  shape     animation muted, frame 0: the skin vs the fitted skin the fit
+            produced (skin_fit_output.npz, every vertex), every other
+            registered body vs the rest written for it (p99, mm)
+  mesh      every body's triangles and UVs identical to the untouched lab
+            scene (the rig, its weights and textures carry over only if so)
   animated  the speech animation, frames 0..END: everything finite, and the
             worst per-frame vertex speed per body compared with the untouched
             template's on the same frames (a blow-up shows as a large ratio)
 
-Vertices whose template output differs from their rest by > 1 mm (the skin's
-forehead strip) are excluded from the rest comparison, as in roundtrip_test.
+The skin is compared with what should be seen, not with its rest: the rig
+adds the template's fixed output-minus-rest offset (the forehead
+"pull_back", up to 16.6 mm), which fit_subject.py already subtracts from the
+written rest. Legacy bodies' vertices with > 1 mm template offset stay
+excluded, as in roundtrip_test.
 
     mayapy rig/sim_check.py SCENE.mb --subject DIR [--end 50] [--no-baseline]
 """
@@ -30,16 +36,57 @@ REST_P99_MM = 0.5
 SPEED_RATIO_MAX = 3.0
 
 
+SKIN = "skin_cloth_copy_v5_pull_back"
+
+
+def mesh_signature(shape, rest):
+    """Polygon connectivity of the rest mesh, UVs of the visible mesh.
+
+    The rest mesh is what the rig is built on (attachments, weights), so its
+    polygons are what must not change. Not the visible mesh's: Maya splits
+    quads along whichever diagonal suits their current shape, in
+    getTriangles() and in polyTriangulate nodes (OrbicularisOris has one
+    downstream of Ziva), so reshaping changes that split while no vertex or
+    face changes. Measured: OrbicularisOris rest polygons 0 of 40,960 entries
+    different; its triangulated output 5,708 of 61,440.
+    """
+    fn = M.mesh_fn(shape)
+    u, v = fn.getUVs()
+    counts, ids = fn.getAssignedUVs()
+    pcounts, pverts = M.mesh_fn(rest).getVertices()
+    return {"poly_counts": np.asarray(pcounts), "poly_verts": np.asarray(pverts),
+            "n_verts": np.asarray([fn.numVertices]),
+            "u": np.asarray(u), "v": np.asarray(v),
+            "uv_counts": np.asarray(counts), "uv_ids": np.asarray(ids)}
+
+
 def speeds(scene, end, mute, check_md5):
+    """-> ({body: (frames, V, 3)}, {body: mesh signature})"""
     M.open_scene(scene, check_md5=check_md5)
     M.cmds.currentTime(config.REST_FRAME)
     if mute:
         M.mute_animation(True)
     bodies = M.ziva_meshes()
     keys = sorted(bodies)
+    sig = {k: mesh_signature(bodies[k]["shape"], M.rest_target(bodies[k]["shape"], bodies[k]["node"])[0])
+           for k in keys}
     rec = M.simulate(list(range(config.REST_FRAME, end + 1)), [bodies[k]["shape"] for k in keys],
                      start=config.REST_FRAME)
-    return {k: rec[bodies[k]["shape"]] for k in keys}
+    return {k: rec[bodies[k]["shape"]] for k in keys}, sig
+
+
+def compare_signatures(a, b):
+    """Bodies whose triangles or UVs differ between two scenes."""
+    bad = {}
+    for k in sorted(set(a) | set(b)):
+        if k not in a or k not in b:
+            bad[k] = "missing"
+            continue
+        diffs = [f for f in ("poly_counts", "poly_verts", "n_verts", "uv_counts", "uv_ids") if not np.array_equal(a[k][f], b[k][f])]
+        diffs += [f for f in ("u", "v") if a[k][f].shape != b[k][f].shape or not np.allclose(a[k][f], b[k][f], atol=1e-7)]
+        if diffs:
+            bad[k] = diffs
+    return bad
 
 
 def main():
@@ -60,13 +107,19 @@ def main():
             with np.load(config.template_export_dir() / (k + ".npz"), allow_pickle=False) as z:
                 free[k] = np.linalg.norm(z["vertices"][0] - z["rest_vertices"], axis=1) > FREE_MM
 
-        print("== rest (muted)")
-        muted = speeds(args.scene, 10, True, False)
+        with np.load(sub / "skin_fit_output.npz", allow_pickle=False) as z:
+            wanted_skin = np.asarray(z["vertices"], dtype=np.float64)
+
+        print("== shape (muted)")
+        muted, sig_fit = speeds(args.scene, 10, True, False)
         rest_dev = {}
         for k, r in rest.items():
             if k not in muted:
                 continue
-            d = np.linalg.norm(muted[k][0] - r, axis=1)[~free[k]]
+            if k == SKIN:
+                d = np.linalg.norm(muted[k][0] - wanted_skin, axis=1)
+            else:
+                d = np.linalg.norm(muted[k][0] - r, axis=1)[~free[k]]
             rest_dev[k] = {"p99_mm": float(np.percentile(d, 99)), "max_mm": float(d.max()),
                            "settle_max_mm": float(np.linalg.norm(muted[k][-1] - muted[k][0], axis=1).max())}
         reg = {k: v for k, v in rest_dev.items() if registered(k)}
@@ -78,7 +131,7 @@ def main():
                                                                          "PASS" if rest_ok else "FAIL"))
 
         print("== animated 0..{0}".format(args.end))
-        anim = speeds(args.scene, args.end, False, False)
+        anim, _sig = speeds(args.scene, args.end, False, False)
         finite = all(np.isfinite(v).all() for v in anim.values())
         vmax = {k: float(np.linalg.norm(np.diff(v, axis=0), axis=2).max()) for k, v in anim.items()}
         run.metrics["animated_finite"] = bool(finite)
@@ -86,7 +139,13 @@ def main():
         anim_ok = finite
         if not args.no_baseline:
             print("== template baseline, animated")
-            base = speeds(None, args.end, False, True)
+            base, sig_lab = speeds(None, args.end, False, True)
+            mesh_bad = compare_signatures(sig_lab, sig_fit)
+            run.metrics["mesh_changed"] = mesh_bad
+            run.metrics["mesh_identical_bodies"] = len(sig_lab) - len(mesh_bad)
+            print("   mesh: polygons and UVs identical to the lab scene in {0}/{1} bodies{2}".format(
+                len(sig_lab) - len(mesh_bad), len(sig_lab), "" if not mesh_bad else ", CHANGED: {0}".format(mesh_bad)))
+            anim_ok = anim_ok and not mesh_bad
             vb = {k: float(np.linalg.norm(np.diff(v, axis=0), axis=2).max()) for k, v in base.items()}
             ratio = {k: vmax[k] / max(vb[k], 1e-6) for k in vmax if k in vb and registered(k)}
             run.metrics["speed_ratio_vs_template"] = ratio
