@@ -34,7 +34,7 @@ from core import io as cio                             # noqa: E402
 from pipeline import canonical as mp                   # noqa: E402
 from pipeline import capture as cap                    # noqa: E402
 from pipeline import fixture as fx                     # noqa: E402
-from pipeline import merge_views, mirror_check, neutral_check, nonrigid, volumetric  # noqa: E402
+from pipeline import holes, importance, merge_views, mirror_check, neutral_check, nonrigid, volumetric  # noqa: E402
 from core.similarity import apply_similarity                # noqa: E402
 from core.geometry import ray_hit_distance as geo_ray       # noqa: E402
 
@@ -51,6 +51,15 @@ LM_WEIGHT = 20.0
 # 1,322, smoothed + 20 left 745, with the raw-scan match ~0.9 mm throughout.
 NONRIGID = dict(schedule=(200.0, 100.0, 50.0, 20.0), iters_per_stage=3, max_dist=10.0)
 DENOISE_K = 32
+# Openings and importance (first real capture): pulling the eye and mouth holes
+# onto the eyelid and inner-lip contours took them from 4.6 mm to 0.19 mm off;
+# stiffness / 5 at the most important skin then gave lips 0.85 mm (was 0.91)
+# and openings 0.11 mm, for 866 folds instead of 840. Extra data weight on
+# the Poisson-disk anchors measured no gain (every visible vertex already
+# follows the scan), so it is off unless asked for.
+HOLE_WEIGHT = 10.0
+IMPORTANCE_GAIN = 4.0
+ANCHOR_DATA_WEIGHT = 4.0
 COVERAGE_MM = 3.0
 
 
@@ -80,7 +89,7 @@ def relabel(views):
         v.unreliable = v.unreliable[perm]
 
 
-def fit(capture_dir, subject_id, out_root=None, do_relabel=False, force=False, verbose=True):
+def fit(capture_dir, subject_id, out_root=None, do_relabel=False, force=False, use_anchors=False, verbose=True):
     capture_dir = Path(capture_dir)
     out_dir = Path(out_root or config.template_export_dir() / "subjects") / subject_id
     with cio.RunDir(subject_id, "fit", "pipeline/fit_subject.py") as run:
@@ -150,10 +159,37 @@ def fit(capture_dir, subject_id, out_root=None, do_relabel=False, force=False, v
                 li.append(i); vi.append(v); w.append(max(wt, 0.1))
         li, vi, w = np.array(li), np.array(vi), np.array(w) * LM_WEIGHT
         X0 = scaled[fx.SKIN]["out"]
-        X, nr = nonrigid.fit(X0, F, lm_idx=vi, lm_pts=mv["landmarks"][li], lm_w=w,
-                             cloud=nonrigid.denoise_cloud(mv["cloud"], DENOISE_K),
-                             cloud_n=mv["cloud_normals"], oriented=True,
-                             data_mask=data_mask, verbose=False, **NONRIGID)
+        cloud_s = nonrigid.denoise_cloud(mv["cloud"], DENOISE_K)
+
+        # Openings: the template's eye and mouth holes pulled onto the person's
+        # eyelid and inner-lip contours (pipeline/holes.py).
+        finite = np.isfinite(mv["landmarks"]).all(axis=1)
+        hidx, htgt = holes.constraints(V, F, mv["landmarks"], finite, cloud_s)
+        lm_i = np.r_[vi, hidx]
+        lm_p = np.r_[mv["landmarks"][li], htgt] if len(hidx) else mv["landmarks"][li]
+        lm_w = np.r_[w, np.full(len(hidx), HOLE_WEIGHT)]
+        # Where the face moves and creases (pipeline/importance.py), the skin
+        # may take more detail: shape-keeping stiffness / (1 + gain * importance).
+        reg_w = data_w = None
+        imp_file = config.template_export_dir() / importance.IMPORTANCE_NPZ
+        if imp_file.exists():
+            imp = importance.load(imp_file)
+            reg_w = 1.0 / (1.0 + IMPORTANCE_GAIN * imp["importance"])
+            if use_anchors:
+                data_w = np.ones(len(V))
+                data_w[imp["anchors"]] = ANCHOR_DATA_WEIGHT
+        elif verbose:
+            print("note: no", imp_file.name, "- uniform stiffness (run pipeline/importance.py)")
+        X, nr = nonrigid.fit(X0, F, lm_idx=lm_i, lm_pts=lm_p, lm_w=lm_w,
+                             cloud=cloud_s, cloud_n=mv["cloud_normals"], oriented=True,
+                             data_mask=data_mask, data_w=data_w, reg_w=reg_w, verbose=False, **NONRIGID)
+        M["openings"] = {"n_constraints": int(len(hidx)),
+                         "off_before_mm": holes.alignment_error(X0, hidx, htgt),
+                         "off_after_mm": holes.alignment_error(X, hidx, htgt),
+                         "importance_stiffness": reg_w is not None, "anchors_weighted": data_w is not None}
+        if verbose and len(hidx):
+            print("openings (eye and mouth holes vs eyelids and lips): {0:.2f} mm -> {1:.2f} mm".format(
+                M["openings"]["off_before_mm"], M["openings"]["off_after_mm"]))
         d_skin = X - X0
         lm_res = np.linalg.norm(X[vi] - mv["landmarks"][li], axis=1)
         cd = nonrigid.cloud_to_mesh_distance(mv["cloud"], X, F) if len(mv["cloud"]) else np.zeros(0)
@@ -286,8 +322,10 @@ def main():
     ap.add_argument("--id", default=None)
     ap.add_argument("--relabel", action="store_true", help="swap left/right indices if the gate says LABELS_SWAPPED")
     ap.add_argument("--force", action="store_true", help="proceed past a failing mirror gate (not for real fits)")
+    ap.add_argument("--anchors", action="store_true", help="extra scan weight on the Poisson-disk anchors (measured no gain)")
     args = ap.parse_args()
-    fit(args.capture, args.id or Path(args.capture).name, do_relabel=args.relabel, force=args.force)
+    fit(args.capture, args.id or Path(args.capture).name, do_relabel=args.relabel, force=args.force,
+        use_anchors=args.anchors)
 
 
 if __name__ == "__main__":

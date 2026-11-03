@@ -100,6 +100,8 @@ The first time on a new machine, set up the template once (each takes a few minu
 ```bash
 $MP rig/export_rest.py --update-registry    # lab head bodies and joints → template_export/
 $MP rig/roundtrip_test.py                   # proves the rig accepts and keeps a new shape
+$MP rig/ui_smoke_test.py capture_01         # after a first fit: also records the lab head speaking
+$MP pipeline/importance.py                  # where the skin needs more detail (from that speech motion)
 ```
 
 ## 3. Play it in the keyboard UI (Maya with the GUI)
@@ -157,7 +159,7 @@ A single photo writes `capture_<timestamp>/` with the same files. A recording wr
 
 1. **Left/right check.** Compares the landmarks' handedness with MediaPipe's canonical face, and uses the turned photos to see which side came toward the lens. It separates OK, swapped labels, a mirrored scan and depth read from the wrong pixels.
 2. **Align and size.** One rotation, position and uniform scale place the lab skin on about 270 landmark pairs (from `config/landmark_to_vertex.json`), weighted toward the nose, chin, forehead and jaw. The whole lab head (skin, muscles, bones, joints) is scaled together.
-3. **Reshape the skin.** The skin is pulled toward its landmarks and toward the depth points inside the face outline (hair, ears, neck and clothing are left out), while keeping its own shape. The eye, mouth and nose openings are masks: nothing is pulled at their edges.
+3. **Reshape the skin.** The skin is pulled toward its landmarks and toward the depth points inside the face outline (hair, ears, neck and clothing are left out), while keeping its own shape. The eye and mouth openings are aligned to the person's eyelids and lips (their corners to the eye and mouth corners, their edges along MediaPipe's eyelid and inner-lip outlines). Where the face moves and creases most (lips, jaw, nose, eye corners: an importance map in the spirit of the lab's deformation-weighted Poisson-disk joint sampling) the skin is allowed more detail.
 4. **Move the inside.** Skull and jaw are placed so the lab head's skin-to-bone depth is kept under the fitted skin, where the camera saw the face. Muscle and fat follow a smooth field pinned at the skin and at the moved bones.
 5. **Write into Maya.** New rest shapes are written into a copy of the lab scene, wired so Ziva uses them; joints are moved and rebound. Checks: the scene shows the fitted face, every body's polygons and UVs match the lab head, and frames 0–50 (the tissue settling under gravity) run without blowing up. Speech is tested through the keyboard UI (`rig/ui_smoke_test.py`).
 

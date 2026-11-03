@@ -1,0 +1,32 @@
+{
+  "subject": "template",
+  "pathway": "importance",
+  "script": "pipeline/importance.py",
+  "run_id": "20261102T221809_7805",
+  "status": "ok",
+  "error": null,
+  "traceback": null,
+  "started_at": "2026-11-02T22:18:09",
+  "wall_clock_s": 4.359,
+  "git": {
+    "sha": "eed36d18041950bd46f8b3bb18d1ca6e7da85839",
+    "dirty": true
+  },
+  "python": "3.9.7",
+  "packages": {
+    "numpy": "2.0.2",
+    "scipy": "1.13.1",
+    "trimesh": null
+  },
+  "metrics": {
+    "n_anchors": 600,
+    "spacing_mm": [
+      2.6249660968780515,
+      10.499864387512206
+    ],
+    "anchor_frac_in_lip_regions": 0.105,
+    "skin_frac_in_lip_regions": 0.12109399559886828,
+    "motion_max_mm": 27.33936827156889,
+    "source": "C:\\Users\\syd3\\bts-proj3\\template_export\\anim_ui_generic.npz"
+  }
+}

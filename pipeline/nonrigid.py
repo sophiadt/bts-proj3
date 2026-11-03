@@ -91,17 +91,21 @@ def outward_sign(verts, faces):
 
 
 def fit(src_verts, faces, lm_idx=None, lm_pts=None, lm_w=None, cloud=None, cloud_n=None,
-        data_mask=None, schedule=DEFAULT_SCHEDULE, iters_per_stage=3, beta=1.0,
+        data_mask=None, data_w=None, reg_w=None, schedule=DEFAULT_SCHEDULE, iters_per_stage=3, beta=1.0,
         max_dist=10.0, normal_cos=0.55, oriented=False, eps=1e-6, verbose=False):
     """-> (X (N,3), info dict). All inputs in mm, one frame.
 
     oriented=True: `cloud_n` must face outward (toward the camera) and the
-    source normals are made outward with `outward_sign`; the test is signed."""
+    source normals are made outward with `outward_sign`; the test is signed.
+    data_w: optional per-vertex multiplier on the data term (Poisson-disk
+    anchors in important regions follow the scan more tightly).
+    reg_w: optional per-vertex multiplier on the shape-keeping term (below 1
+    where the face moves and creases, so the skin may take more detail there)."""
     x0 = np.asarray(src_verts, dtype=np.float64)
     n = len(x0)
     faces = np.asarray(faces, dtype=np.int64)
     L = geo.uniform_laplacian(n, faces)
-    LtL = (L.T @ L).tocsr()
+    LtL = (L.T @ L).tocsr() if reg_w is None else (L.T @ sp.diags(np.asarray(reg_w, dtype=np.float64)) @ L).tocsr()
     rhs_reg = LtL @ x0
 
     lm_idx = np.asarray([] if lm_idx is None else lm_idx, dtype=np.int64)
@@ -139,8 +143,9 @@ def fit(src_verts, faces, lm_idx=None, lm_pts=None, lm_w=None, cloud=None, cloud
                     dots = (vn * cn[jj]).sum(axis=1)
                     ok &= (dots if oriented else np.abs(dots)) >= normal_cos
                 n_acc = int(ok.sum())
-                d_data[ok] = beta
-                rhs_data[ok] = beta * cloud[j[ok]]
+                bw = beta * (np.ones(n) if data_w is None else np.asarray(data_w, dtype=np.float64))
+                d_data[ok] = bw[ok]
+                rhs_data[ok] = bw[ok][:, None] * cloud[j[ok]]
             A = (alpha * LtL + sp.diags(d_lm + d_data + eps)).tocsc()
             solve = factorized(A)
             b = alpha * rhs_reg + rhs_lm + rhs_data + eps * x0

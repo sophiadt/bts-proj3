@@ -157,6 +157,44 @@ def test_camera_angles_sign():
     assert np.isclose(side, 20)
 
 
+# --- importance sampling and openings ----------------------------------------------
+
+def test_poisson_disk_is_denser_where_weight_is_high():
+    from pipeline import importance as imp
+    rng = np.random.default_rng(6)
+    pts = np.c_[rng.random((6000, 2)) * 100, np.zeros(6000)]
+    w = np.where(pts[:, 0] < 30, 1.0, 0.1)                 # a strip of high importance
+    idx, _ = imp.poisson_disk(pts, w, 200)
+    assert len(idx) == 200 and len(set(idx.tolist())) == 200
+    strip = (pts[idx, 0] < 30).mean()
+    assert strip > 0.45                                     # 30% of the area, well over 30% of anchors
+
+
+def test_crease_map_ignores_uneven_triangles_on_a_flat_sheet():
+    from pipeline import importance as imp
+    rng = np.random.default_rng(7)
+    g = np.stack(np.meshgrid(np.arange(20.0), np.arange(20.0)), -1).reshape(-1, 2)
+    g = g + rng.normal(scale=0.3, size=g.shape)              # uneven spacing, still flat
+    v = np.c_[g, np.zeros(len(g))]
+    from scipy.spatial import Delaunay
+    f = Delaunay(g).simplices
+    assert np.abs(imp.crease_map(v, f)).max() < 1e-9
+
+
+@needs_export
+def test_opening_edges_run_inner_to_outer():
+    from pipeline import holes
+    V, F, _ = __import__("pipeline.fixture", fromlist=["x"]).load_skin()
+    edges, x0 = holes.template_edges(V, F)
+    assert set(edges) == {"eye_r", "eye_l", "mouth"}
+    for name in ("eye_r", "eye_l"):
+        for chain in edges[name]:
+            assert abs(V[chain[0], 0] - x0) < abs(V[chain[-1], 0] - x0)   # inner corner first
+    assert V[edges["eye_r"][0][0], 0] > x0 and V[edges["eye_l"][0][0], 0] < x0   # subject's right is +X
+    up, lo = edges["mouth"]
+    assert V[up, 1].mean() > V[lo, 1].mean() and V[up[0], 0] > V[up[-1], 0]
+
+
 # --- keyboard UI motion scaling ------------------------------------------------------
 
 def test_scaled_pickle_scales_positions_not_jaw_rotation(tmp_path):

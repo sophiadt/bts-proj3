@@ -96,6 +96,9 @@ def main():
         gen_scene = generic_ui_scene()
         gen, run.metrics["generic"] = play(gen_scene, 1.0, args.sentence)
         np.savez_compressed(sub / "anim_ui_generic.npz", skin=gen[SKIN].astype(np.float32))
+        # The lab head's own speech motion: pipeline/importance.py builds the skin
+        # importance map from it (where the face moves when it talks).
+        np.savez_compressed(config.template_export_dir() / "anim_ui_generic.npz", skin=gen[SKIN].astype(np.float32))
 
         n = min(len(next(iter(fit.values()))), len(next(iter(gen.values()))))
         finite = all(np.isfinite(v).all() for v in fit.values())
