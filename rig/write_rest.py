@@ -186,12 +186,50 @@ def rebind_skin_clusters():
     return done
 
 
+UI_NEUTRAL_FRAME = 14
+UI_JOINT_PATTERNS = ("oor_*", "ooc_l_*", "ooc_r_*", "frontalis_*", "jaw01")
+
+
+def stamp_fit_info(src_dir):
+    """Store the fit's uniform scale and subject id in the scene (fileInfo), so
+    tools that replay template-sized motion (rig/keyboard_ui_fitted.py) can
+    resize it. -> (scale or None, subject)"""
+    import json
+    rep = Path(src_dir) / "report.json"
+    scale = None
+    if rep.exists():
+        with open(rep, encoding="utf-8") as fh:
+            scale = json.load(fh)["metrics"].get("scale")
+    subject = Path(src_dir).name
+    M.cmds.fileInfo("bts_subject", subject)
+    if scale is not None:
+        M.cmds.fileInfo("bts_fit_scale", repr(float(scale)))
+    return scale, subject
+
+
+def strip_ui_keys(after=UI_NEUTRAL_FRAME):
+    """Delete every key after `after` on the keyboard UI's joints, so the UI
+    starts from a clean neutral at that frame (the lab scene has its own
+    own keys on the same joints over frames 0-50).
+    -> number of joints touched"""
+    cmds = M.cmds
+    joints = []
+    for pat in UI_JOINT_PATTERNS:
+        joints += cmds.ls(pat, type="joint") or []
+    for j in joints:
+        cmds.cutKey(j, time=(after + 0.5, 1e6), clear=True)
+    cmds.playbackOptions(minTime=0, maxTime=max(after, 1))
+    return len(joints)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("src", help="directory of <body>.npz with rest_vertices (+ joints.npz)")
     ap.add_argument("--save", required=True, help="label: writes template_export/scenes/<label>.mb")
     ap.add_argument("--scene", default=None)
     ap.add_argument("--no-joints", action="store_true")
+    ap.add_argument("--ui-ready", action="store_true",
+                    help="also save <label>_ui.mb for the keyboard UI: keys after frame 14 removed")
     args = ap.parse_args()
 
     M.boot()
@@ -201,9 +239,16 @@ def main():
         run.metrics["readback_max_mm"] = apply_rest_shapes(rest)
         if joints and not args.no_joints:
             run.metrics["joints"] = move_joints(joints)
+        run.metrics["fit_scale"], run.metrics["subject"] = stamp_fit_info(args.src)
         out = M.save_copy(config.template_export_dir() / "scenes" / (args.save + ".mb"))
         run.metrics["saved"] = str(out)
         print("saved", out)
+        if args.ui_ready:
+            run.metrics["ui_joints_stripped"] = strip_ui_keys()
+            ui = M.save_copy(config.template_export_dir() / "scenes" / (args.save + "_ui.mb"))
+            run.metrics["saved_ui"] = str(ui)
+            print("saved", ui, "({0} UI joints, keys after frame {1} removed)".format(
+                run.metrics["ui_joints_stripped"], UI_NEUTRAL_FRAME))
 
 
 if __name__ == "__main__":

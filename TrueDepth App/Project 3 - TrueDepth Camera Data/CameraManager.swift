@@ -303,12 +303,17 @@ final class CameraManager: NSObject, ObservableObject, AVCaptureDataOutputSynchr
         ]
     }
 
-    // Transposes the sensor-native frame so the face is upright for MediaPipe.
+    // Turns the sensor-native frame upright for MediaPipe, NOT mirrored.
+    // .leftMirrored rotates it upright but also mirrors it; the flip after it undoes the
+    // mirror, so MediaPipe's left/right landmarks (33 = the person's own right eye) and
+    // blendshapes land on the right side of the face. Depth lookups use column = lm.y,
+    // row = 1 - lm.x to match.
     // maxSide shrinks the result (landmarks are normalized, so size does not matter).
     private func uprightBuffer(from pb: CVPixelBuffer, maxSide: CGFloat? = nil) -> CVPixelBuffer? {
         var img = CIImage(cvPixelBuffer: pb).oriented(.leftMirrored)
         img = img.transformed(by: CGAffineTransform(translationX: -img.extent.origin.x,
                                                     y: -img.extent.origin.y))
+        img = img.transformed(by: CGAffineTransform(a: -1, b: 0, c: 0, d: 1, tx: img.extent.width, ty: 0))
         if let m = maxSide {
             let sc = m / max(img.extent.width, img.extent.height)
             if sc < 1 { img = img.transformed(by: CGAffineTransform(scaleX: sc, y: sc)) }
@@ -334,9 +339,9 @@ final class CameraManager: NSObject, ObservableObject, AVCaptureDataOutputSynchr
         let result = try landmarker.detect(image: image)
         guard let lms = result.faceLandmarks.first else { throw FuseError.noFace }
         let points = lms.map { lm -> SIMD3<Float>? in
-            // The upright image is a transpose, so its x and y axes are swapped
-            // relative to the depth map: depth column = lm.y, depth row = lm.x
-            let u = lm.y * Float(dw), v = lm.x * Float(dh)
+            // The upright image is the depth map's transpose, flipped left-right:
+            // depth column = lm.y, depth row = 1 - lm.x
+            let u = lm.y * Float(dw), v = (1 - lm.x) * Float(dh)
             guard let z = sampleDepth(depth, dw, dh, u, v) else { return nil }
             return SIMD3<Float>((u - k.cx) * z / k.fx, (v - k.cy) * z / k.fy, z) * 1000
         }
@@ -392,6 +397,16 @@ final class CameraManager: NSObject, ObservableObject, AVCaptureDataOutputSynchr
         }
         let rgbURL = dir.appendingPathComponent("\(prefix)rgb.jpg")
         try jpg.write(to: rgbURL)
+        // Upright, unmirrored copy for viewing. rgb.jpg stays sensor-native (sideways)
+        // because it shares the depth map's pixel grid.
+        var uprightURL: URL?
+        if let up = uprightBuffer(from: pb),
+           let ucg = ctx.createCGImage(CIImage(cvPixelBuffer: up), from: CIImage(cvPixelBuffer: up).extent),
+           let ujpg = UIImage(cgImage: ucg).jpegData(compressionQuality: 0.92) {
+            let url = dir.appendingPathComponent("\(prefix)rgb_upright.jpg")
+            try ujpg.write(to: url)
+            uprightURL = url
+        }
 
         // Raw depth: float32 meters, row-major
         let (arr, w, h) = depthArray(depth.depthDataMap)
@@ -399,6 +414,7 @@ final class CameraManager: NSObject, ObservableObject, AVCaptureDataOutputSynchr
         let depthData = arr.withUnsafeBufferPointer { Data(buffer: $0) }
         try depthData.write(to: depthURL)
         var files = [rgbURL, depthURL]
+        if let u = uprightURL { files.append(u) }
 
         // MediaPipe + fusion
         let k = scaledIntrinsics(depth.cameraCalibrationData, depthWidth: w)
@@ -566,7 +582,8 @@ final class CameraManager: NSObject, ObservableObject, AVCaptureDataOutputSynchr
             lms = first
             bs = blendshapes(result)
         }
-        let norm = lms.map { CGPoint(x: CGFloat($0.x), y: CGFloat($0.y)) }
+        // The live views are shown as a mirror (selfie) image, so the overlay is mirrored too
+        let norm = lms.map { CGPoint(x: 1 - CGFloat($0.x), y: CGFloat($0.y)) }
 
         // 3D positions in mm, and how many landmarks have a valid depth reading
         var pts: [SIMD3<Float>?] = []
@@ -583,7 +600,7 @@ final class CameraManager: NSObject, ObservableObject, AVCaptureDataOutputSynchr
             for lm in lms {
                 let inside = lm.x >= 0 && lm.x <= 1 && lm.y >= 0 && lm.y <= 1
                 if !inside { inFrame = false }
-                let u = lm.y * Float(w), v = lm.x * Float(h)
+                let u = lm.y * Float(w), v = (1 - lm.x) * Float(h)
                 if inside, let k = kUsed, let z = sampleDepth(arr, w, h, u, v) {
                     pts.append(SIMD3<Float>((u - k.cx) * z / k.fx, (v - k.cy) * z / k.fy, z) * 1000)
                     withDepth += 1
@@ -646,7 +663,10 @@ final class CameraManager: NSObject, ObservableObject, AVCaptureDataOutputSynchr
         var photo: UIImage?
         if wantRGB {
             let ci = CIImage(cvPixelBuffer: small)
-            if let cg = ciContext.createCGImage(ci, from: ci.extent) { photo = UIImage(cgImage: cg) }
+            // Shown mirrored (selfie view), like the depth view and the overlay
+            if let cg = ciContext.createCGImage(ci, from: ci.extent) {
+                photo = UIImage(cgImage: cg, scale: 1, orientation: .upMirrored)
+            }
         }
         let misses = recMisses
         let isRec = recording

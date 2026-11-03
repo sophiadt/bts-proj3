@@ -43,6 +43,25 @@ def cloud_normals(pts, k=12):
     return v[:, :, 0]
 
 
+def denoise_cloud(pts, k=32):
+    """Project each point onto the plane through its k nearest neighbours.
+
+    Raw TrueDepth depth (filtering off) carries roughly 1 mm of noise that the
+    skin otherwise copies. On the first real capture, k=32 with the stiffer
+    schedule cut folded skin triangles from 1,322 to 745 while the match to
+    the raw scan stayed at ~0.9 mm."""
+    pts = np.asarray(pts, dtype=np.float64)
+    if len(pts) < k:
+        return pts.copy()
+    _, nb = cKDTree(pts).query(pts, k=k)
+    q = pts[nb]
+    c = q.mean(axis=1)
+    d = q - c[:, None]
+    _w, vec = np.linalg.eigh(np.einsum("nki,nkj->nij", d, d))
+    n = vec[:, :, 0]
+    return pts - ((pts - c) * n).sum(axis=1, keepdims=True) * n
+
+
 def boundary_points(pts, normals, k=16, ratio=0.35):
     """Points on the edge of a cloud: their neighbours' centroid sits off to one
     side in the tangent plane. Correspondences to these are rejected -- skin the

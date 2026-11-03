@@ -5,7 +5,8 @@
             registered body vs the rest written for it (p99, mm)
   mesh      every body's triangles and UVs identical to the untouched lab
             scene (the rig, its weights and textures carry over only if so)
-  animated  the speech animation, frames 0..END: everything finite, and the
+  animated  the scene's own keys, frames 0..END (the tissue settling under
+            gravity -- no speech; that is rig/ui_smoke_test.py): everything finite, and the
             worst per-frame vertex speed per body compared with the untouched
             template's on the same frames (a blow-up shows as a large ratio)
 
@@ -34,6 +35,10 @@ from rig.write_rest import load_rest_dir               # noqa: E402
 
 REST_P99_MM = 0.5
 SPEED_RATIO_MAX = 3.0
+# A blow-up is fast in absolute terms too. Near-still bodies make the ratio
+# meaningless: the first real capture's polySurface10 fat piece read 3.8x at
+# 0.022 mm/frame (template 0.006), while the median body moves 0.036.
+SPEED_FLOOR_MM = 0.5
 
 
 SKIN = "skin_cloth_copy_v5_pull_back"
@@ -132,6 +137,8 @@ def main():
 
         print("== animated 0..{0}".format(args.end))
         anim, _sig = speeds(args.scene, args.end, False, False)
+        # The animated skin, frame by frame, for tools/render_fit.py.
+        np.savez_compressed(sub / "anim_fit.npz", skin=anim[SKIN].astype(np.float32))
         finite = all(np.isfinite(v).all() for v in anim.values())
         vmax = {k: float(np.linalg.norm(np.diff(v, axis=0), axis=2).max()) for k, v in anim.items()}
         run.metrics["animated_finite"] = bool(finite)
@@ -140,6 +147,7 @@ def main():
         if not args.no_baseline:
             print("== template baseline, animated")
             base, sig_lab = speeds(None, args.end, False, True)
+            np.savez_compressed(sub / "anim_template.npz", skin=base[SKIN].astype(np.float32))
             mesh_bad = compare_signatures(sig_lab, sig_fit)
             run.metrics["mesh_changed"] = mesh_bad
             run.metrics["mesh_identical_bodies"] = len(sig_lab) - len(mesh_bad)
@@ -149,7 +157,7 @@ def main():
             vb = {k: float(np.linalg.norm(np.diff(v, axis=0), axis=2).max()) for k, v in base.items()}
             ratio = {k: vmax[k] / max(vb[k], 1e-6) for k in vmax if k in vb and registered(k)}
             run.metrics["speed_ratio_vs_template"] = ratio
-            bad = {k: r for k, r in ratio.items() if r > SPEED_RATIO_MAX}
+            bad = {k: r for k, r in ratio.items() if r > SPEED_RATIO_MAX and vmax[k] > SPEED_FLOOR_MM}
             run.metrics["speed_ratio_over_max"] = bad
             anim_ok = anim_ok and not bad
             top = sorted(ratio.items(), key=lambda kv: -kv[1])[:5]

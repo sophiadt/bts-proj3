@@ -35,6 +35,7 @@ OUTLIER_MM = 8.0           # landmark depth vs its 9x9 neighbourhood median
 OUTLIER_WIN = 4
 EDGE_MM = 10.0             # depth range in a 5x5 window: the landmark sits on a depth edge
 EDGE_WIN = 2               # (silhouette landmarks 234/454/132/361 measured 13-30 mm off)
+FACE_OUTLINE_SHRINK = 0.03 # cloud kept inside the face-oval outline, pulled 3% inward
 
 
 class View(object):
@@ -117,8 +118,26 @@ class View(object):
                 bad[i] = True
         return bad
 
-    def cloud(self, margin_mm=15.0, z_margin_mm=40.0, stride=1):
-        """Dense camera-frame cloud (mm) in a box around the valid landmarks."""
+    def face_outline_px(self, shrink=FACE_OUTLINE_SHRINK):
+        """MediaPipe's face-oval landmarks as a closed polygon in depth pixels,
+        pulled toward its centre by `shrink` (the outline itself sits on the
+        silhouette, where depth is unreliable). Landmarks without depth are
+        skipped; projecting X/Z, Y/Z recovers each landmark's pixel exactly,
+        whatever depth it was given."""
+        idx = [i for i in mp.FACE_OVAL if np.isfinite(self.landmarks[i]).all()]
+        if len(idx) < 8 or self.K is None:
+            return None
+        uv = self.project(self.landmarks[idx])
+        c = uv.mean(axis=0)
+        return c + (uv - c) * (1.0 - shrink)
+
+    def cloud(self, margin_mm=15.0, z_margin_mm=40.0, stride=1, face_only=True):
+        """Dense camera-frame cloud (mm).
+
+        face_only: only depth pixels inside the face outline -- hair, ears,
+        neck and clothing (a hoodie's hood pulled the first capture's jaw
+        skin up to 55 mm) are dropped; the template skin beyond the outline
+        follows by the regulariser. Otherwise a box around the landmarks."""
         if self.depth is None or self.K is None:
             return np.zeros((0, 3))
         k = self.K
@@ -126,6 +145,11 @@ class View(object):
         vv, uu = np.mgrid[0:h:stride, 0:w:stride]
         z = self.depth[::stride, ::stride] * 1000.0
         ok = np.isfinite(z)
+        outline = self.face_outline_px() if face_only else None
+        if outline is not None:
+            from matplotlib.path import Path as Polygon
+            inside = Polygon(outline).contains_points(np.c_[uu.ravel(), vv.ravel()]).reshape(uu.shape)
+            ok &= inside
         x = (uu - k["cx"]) * z / k["fx"]
         y = (vv - k["cy"]) * z / k["fy"]
         pts = np.stack([x[ok], y[ok], z[ok]], axis=1)
@@ -158,15 +182,22 @@ def check_upright(lm_tpl):
 
 
 def load_capture(folder):
-    """-> {view name: View}, e.g. {"front": ..., "left": ..., "right": ...}."""
+    """-> {view name: View}, e.g. {"front": ..., "left": ..., "right": ...}.
+
+    Accepts the app's flat folder (face_<timestamp>/front_..., left_..., ...)
+    and the same files sorted one level down (Capture Data/Front/front_...).
+    """
     folder = Path(folder)
     found = sorted(glob.glob(str(folder / "*landmarks_3d_mm.json")))
+    found += sorted(glob.glob(str(folder / "*" / "*landmarks_3d_mm.json")))
     if not found:
-        raise FileNotFoundError("no *landmarks_3d_mm.json in {0}".format(folder))
+        raise FileNotFoundError("no *landmarks_3d_mm.json in {0} or its subfolders".format(folder))
     views = {}
     for f in found:
         prefix = os.path.basename(f)[:-len("landmarks_3d_mm.json")]
-        v = View(folder, prefix)
+        v = View(Path(f).parent, prefix)
+        if v.name in views:
+            raise ValueError("two '{0}' views in {1}".format(v.name, folder))
         views[v.name] = v
     return views
 

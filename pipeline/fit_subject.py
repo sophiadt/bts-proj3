@@ -34,7 +34,7 @@ from core import io as cio                             # noqa: E402
 from pipeline import canonical as mp                   # noqa: E402
 from pipeline import capture as cap                    # noqa: E402
 from pipeline import fixture as fx                     # noqa: E402
-from pipeline import merge_views, mirror_check, nonrigid, volumetric  # noqa: E402
+from pipeline import merge_views, mirror_check, neutral_check, nonrigid, volumetric  # noqa: E402
 from core.similarity import apply_similarity                # noqa: E402
 from core.geometry import ray_hit_distance as geo_ray       # noqa: E402
 
@@ -46,7 +46,11 @@ BONE_GROUPS = {SKULL: [SKULL, "middleres_TeethUp"], JAW: [JAW, "middleres_TeethD
 BONE_RAYS = 3000
 BONE_CENTRES = 800
 LM_WEIGHT = 20.0
-NONRIGID = dict(schedule=(200.0, 100.0, 50.0, 20.0, 10.0, 5.0, 2.0), iters_per_stage=3, max_dist=10.0)
+# Ends at stiffness 20 on a smoothed scan (nonrigid.denoise_cloud). On the
+# first real capture: stiffness 2 left 2,449 folded skin triangles, 10 left
+# 1,322, smoothed + 20 left 745, with the raw-scan match ~0.9 mm throughout.
+NONRIGID = dict(schedule=(200.0, 100.0, 50.0, 20.0), iters_per_stage=3, max_dist=10.0)
+DENOISE_K = 32
 COVERAGE_MM = 3.0
 
 
@@ -90,6 +94,12 @@ def fit(capture_dir, subject_id, out_root=None, do_relabel=False, force=False, v
         if gate["verdict"] == "LABELS_SWAPPED" and do_relabel:
             relabel(views)
             M["relabelled"] = True
+            again = mirror_check.check(views)
+            M["mirror_verdict_after_relabel"] = again["verdict"]
+            if verbose:
+                print("mirror check after relabel:", again["verdict"])
+            if again["verdict"] != "OK" and not force:
+                raise RuntimeError("relabelling did not fix the mirror check: " + again["verdict"])
         elif gate["verdict"] != "OK" and not force:
             raise RuntimeError("mirror gate: {0}. {1}".format(gate["verdict"], mirror_check.ADVICE.get(gate["verdict"])))
 
@@ -110,6 +120,19 @@ def fit(capture_dir, subject_id, out_root=None, do_relabel=False, force=False, v
             print("rigid: scale {0:.4f}, residual median {1:.2f} rms {2:.2f} max {3:.2f} mm over {4} landmarks".format(
                 s, p["median_used_mm"], p["rms_used_mm"], p["max_used_mm"], p["n_used"]))
 
+        # Neutral-face check from geometry (never from blendshape scores), with
+        # where each camera sat as seen from the face, from the rigid fit.
+        face_centre = mv["landmarks"][mv["valid"]].mean(axis=0)
+        cam_dirs = {k: v["camera_centre"] - face_centre for k, v in mv["per_view"].items()}
+        M["neutral"] = neutral_check.check(views, cam_dirs, primary_name=mv["primary"])
+        if verbose:
+            for k, r in M["neutral"]["views"].items():
+                print("  {0:6s} lips {1:.1f} mm, eyelids {2:.1f}/{3:.1f} mm, phone {4:+.0f} deg up/down, {5:+.0f} deg side".format(
+                    k, r["lip_gap_mm"] or float("nan"), r["eyelid_opening_r_mm"] or float("nan"),
+                    r["eyelid_opening_l_mm"] or float("nan"), r.get("camera_elevation_deg", float("nan")),
+                    r.get("camera_side_deg", float("nan"))))
+            print("neutral check:", "ok" if M["neutral"]["neutral"] else "; ".join(M["neutral"]["warnings"]))
+
         # 2. uniform scale of the whole template (bodies and joints) about the origin
         scaled = {k: {"out": s * b["out"], "rest": s * b["rest"]} for k, b in bodies.items()}
         sjoints = {k: s * p for k, p in joints.items()}
@@ -127,7 +150,8 @@ def fit(capture_dir, subject_id, out_root=None, do_relabel=False, force=False, v
                 li.append(i); vi.append(v); w.append(max(wt, 0.1))
         li, vi, w = np.array(li), np.array(vi), np.array(w) * LM_WEIGHT
         X0 = scaled[fx.SKIN]["out"]
-        X, nr = nonrigid.fit(X0, F, lm_idx=vi, lm_pts=mv["landmarks"][li], lm_w=w, cloud=mv["cloud"],
+        X, nr = nonrigid.fit(X0, F, lm_idx=vi, lm_pts=mv["landmarks"][li], lm_w=w,
+                             cloud=nonrigid.denoise_cloud(mv["cloud"], DENOISE_K),
                              cloud_n=mv["cloud_normals"], oriented=True,
                              data_mask=data_mask, verbose=False, **NONRIGID)
         d_skin = X - X0

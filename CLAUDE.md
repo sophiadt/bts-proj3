@@ -20,6 +20,17 @@ Facts the brief did not have:
 - **Skin rest ≠ output** along the top forehead edge ("pull_back", 1,254 vertices, up to 16.6 mm, and 0.3–1 mm on 403 more). The rig adds this offset as a **fixed amount that does not scale** with the head: the round-trip strip deviation was 0.83 mm at 1.05× and 4.16 mm at 0.75×, which is 5% and 25% of 16.6 mm. So the written skin rest = wanted face − template offset, and Maya then shows the fitted face exactly (p99 0.000 mm). The earlier "1 mm skin gap" was this offset, not a fitting error.
 - **Bones are placed from skin depth**, not by stretching the face's movement to the back of the head. At the face points the camera saw, the template's skin-to-bone depth (at subject scale) is kept under the fitted skin, and one similarity per bone is fitted; teeth follow their bone. On the synthetic face this took the skull's extra shrink from 12% to 0.9% and skin-through-skull spots from 36 to 1. Muscle and fat follow a field pinned at both the skin and the moved bone surfaces.
 - **Topology and UVs never change.** Only vertex positions move, so the existing rig (attachments, weights, joints, textures) carries over. `rig/sim_check.py` proves it per run: rest-mesh polygons and UVs identical to the lab scene in all 52 bodies. Compare the rest mesh, not `getTriangles()` or the visible OrbicularisOris (it has a `polyTriangulate1`), because Maya re-picks quad diagonals when a shape changes.
+- **First real capture (`Capture Data/Front|Left|Right`, Nov 2026): `LABELS_SWAPPED`.** Proof that doesn't depend on the check itself: `rgb.jpg`, turned 90° clockwise, shows "Superdry®" reading normally, so it isn't mirrored; on that photo landmark 33 lands on his *left* eye. Cause: the app's `.leftMirrored` mirrors MediaPipe's input. Fixed in `TrueDepth App/.../CameraManager.swift` (flip in `uprightBuffer`, depth row `1 − lm.x`, overlay mirrored for the selfie view), but **not yet built or verified on a phone**. Until a new capture passes without it, fit with `--relabel`. The live preview is a mirror image, so the red-dot test is: right hand on the right eye.
+- **Never judge expression from MediaPipe blendshapes.** They scored a neutral face eyeSquint ~0.5 and mouthPucker 0.71 (hooded/monolid eyes; low phone). `pipeline/neutral_check.py` measures lips and jaw in mm from reliable landmarks, never warns on eye opening, and takes the phone angle from the rigid fit. Many subjects are Asian; keep it that way.
+- **Capture-side robustness learned on the real capture:** keep only depth inside the face-oval outline (a hoodie and hair pulled the jaw skin up to 55 mm); smooth the scan (`denoise_cloud`, k=32) and end the skin fit at stiffness 20 (folds 2,449 → 745). Silhouette landmarks and the chin can carry wrong depth (chin read 80 mm behind the nose); they're filtered.
+- **Keyboard UI** lives in the lab's repo (`C:\Users\zpa18\a3-stochastic-V1\…\h99-UI-mayascipt-V1_comsciV1.py`); don't edit it. `rig/keyboard_ui.py` runs it on a fitted head from an in-memory copy:
+  - phoneme displacements scaled by the fit (jaw rotation [900:903] not scaled);
+  - feedback control's neutral swapped for the fitted frame-14 joints;
+  - reset reopens the fitted `_ui.mb`;
+  - its writes go to `template_export/ui_results`.
+
+  `rig/write_rest.py --ui-ready` writes `<id>_ui.mb` with the 1,201 UI joints' keys after frame 14 removed.
+- **The iPhone app** is in `TrueDepth App/` (one folder: `.xcodeproj` + source). Commit messages: one short line, no Claude co-author.
 - **Timeline** is 0–50, not 0–106.
 - `landmarks_lab.json`'s `mouth_corner_R` sits at x = −25.8, which is the subject's **left** (+X is the subject's right). The label is viewer-side.
 - The template is 1.42–1.45× a real face overall (eyes 1.6–1.7×, nose 1.2×). The fitted uniform scale lands near 0.69.
@@ -37,8 +48,11 @@ $MP pipeline/canonical.py              # MediaPipe canonical mesh out of face_la
 $MP pipeline/fixture.py                # config/landmark_to_vertex.json (committed, never per subject)
 $MP pipeline/mirror_check.py CAPTURE   # STOP: a person reviews the verdict before any app change
 $MP pipeline/fit_subject.py CAPTURE --id NAME
-$MP rig/write_rest.py template_export/subjects/NAME --save NAME
+$MP rig/write_rest.py template_export/subjects/NAME --save NAME --ui-ready
 $MP rig/sim_check.py template_export/scenes/NAME.mb --subject template_export/subjects/NAME
+$MP tools/render_fit.py NAME            # pictures + animation GIFs -> template_export/subjects/NAME/views
+$MP rig/ui_smoke_test.py NAME           # keyboard UI plays "not even you" on the fitted head (runs the lab's code)
+# Maya GUI: exec(open(r"C:\Users\syd3\bts-proj3\rig\keyboard_ui_fitted.py").read())
 PYTHONPATH=".pytest-lib;." $MP -m pytest tests/test_pipeline.py   # pytest via pip --target; mayapy untouched
 ```
 

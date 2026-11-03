@@ -104,6 +104,81 @@ def test_depth_edge_flags_silhouette_landmarks(tmp_path):
     assert v.unreliable.mean() < 0.25
 
 
+def test_capture_loads_flat_and_subfolder_layouts(tmp_path):
+    flat = tmp_path / "flat"
+    synthetic.make_guided(flat)
+    sub = tmp_path / "sub"
+    for name in ("front", "left", "right"):
+        (sub / name.title()).mkdir(parents=True)
+        for f in flat.glob(name + "_*"):
+            (sub / name.title() / f.name).write_bytes(f.read_bytes())
+    a, b = cap.load_capture(flat), cap.load_capture(sub)
+    assert sorted(a) == sorted(b) == ["front", "left", "right"]
+    for k in a:
+        np.testing.assert_array_equal(a[k].landmarks, b[k].landmarks)
+        assert a[k].cloud(stride=4).shape == b[k].cloud(stride=4).shape
+
+
+def test_cloud_keeps_only_the_face(tmp_path):
+    synthetic.make_view(tmp_path, "", 0.0, "ok")
+    v = cap.load_capture(tmp_path)["single"]
+    face, box = v.cloud(stride=2), v.cloud(stride=2, face_only=False)
+    assert 0 < len(face) < len(box)
+
+
+# --- neutral check (geometry only, robust to eye shape) ----------------------------
+
+def test_neutral_check_never_warns_on_eye_opening(tmp_path):
+    from pipeline import neutral_check as nc
+    synthetic.make_guided(tmp_path)
+    views = cap.load_capture(tmp_path)
+    for v in views.values():                    # close the lips (canonical mouth is parted)
+        v.landmarks[nc.LIP_LOWER_INNER] = v.landmarks[nc.LIP_UPPER_INNER]
+        for up, lo in (nc.R_LID, nc.L_LID):      # a nearly closed, hooded-looking eye
+            v.landmarks[lo] = v.landmarks[up] + 0.2 * (v.landmarks[lo] - v.landmarks[up])
+    r = nc.check(views)
+    assert r["neutral"], r["warnings"]
+    assert r["views"]["front"]["eyelid_opening_r_mm"] < 3
+
+
+def test_neutral_check_flags_open_mouth(tmp_path):
+    from pipeline import neutral_check as nc
+    synthetic.make_view(tmp_path, "", 0.0, "ok")      # MediaPipe's canonical face has parted lips
+    r = nc.check(cap.load_capture(tmp_path))
+    assert not r["neutral"] and "lips apart" in r["warnings"][0]
+
+
+def test_camera_angles_sign():
+    from pipeline import neutral_check as nc
+    a = np.radians(20)
+    elev, side = nc.camera_angles([0.0, -np.sin(a), -np.cos(a)])     # below the face, in front
+    assert np.isclose(elev, -20) and np.isclose(side, 0, atol=1e-9)
+    _, side = nc.camera_angles([np.sin(a), 0.0, -np.cos(a)])         # toward the subject's right (+X)
+    assert np.isclose(side, 20)
+
+
+# --- keyboard UI motion scaling ------------------------------------------------------
+
+def test_scaled_pickle_scales_positions_not_jaw_rotation(tmp_path):
+    import pickle
+    from rig.keyboard_ui import JAW_ROT, ScaledPickle
+    vec = list(np.arange(3603, dtype=float) + 1.0)
+    path = tmp_path / "combined_checkpoints_base10.pkl"
+    with open(path, "wb") as fh:
+        pickle.dump([vec], fh)
+    other = tmp_path / "final_epoch_action_list.pkl"
+    with open(other, "wb") as fh:
+        pickle.dump({"a": [1.0]}, fh)
+    sp = ScaledPickle(0.5)
+    with open(path, "rb") as fh:
+        out = np.array(sp.load(fh)[0])
+    np.testing.assert_allclose(out[:900], np.array(vec[:900]) * 0.5)
+    np.testing.assert_allclose(out[JAW_ROT], vec[900:903])
+    np.testing.assert_allclose(out[903:], np.array(vec[903:]) * 0.5)
+    with open(other, "rb") as fh:
+        assert sp.load(fh) == {"a": [1.0]}
+
+
 # --- mirror gate --------------------------------------------------------------------
 
 @pytest.mark.parametrize("mode,verdict", [
@@ -166,6 +241,19 @@ def test_nonrigid_recovers_smooth_warp_from_cloud():
     # With the target's own vertices as the cloud there is nothing to slide on.
     x2, _ = nonrigid.fit(v, f, lm_idx=lm, lm_pts=target[lm], lm_w=np.full(len(lm), 10.0), cloud=target)
     assert np.median(np.linalg.norm(x2 - target, axis=1)) < 0.1
+
+
+def test_denoise_cloud_flattens_noise_keeps_shape():
+    rng = np.random.default_rng(5)
+    g = np.stack(np.meshgrid(np.arange(0, 40.0, 0.8), np.arange(0, 40.0, 0.8)), -1).reshape(-1, 2)
+    true_z = 0.002 * (g[:, 0] - 20) ** 2                 # a gentle curve, like a cheek
+    noisy = np.c_[g, true_z + rng.normal(scale=1.0, size=len(g))]
+    out = nonrigid.denoise_cloud(noisy, k=32)
+    inner = (np.abs(g - 20) < 15).all(axis=1)
+    before = np.abs(noisy[inner, 2] - true_z[inner]).mean()
+    after = np.abs(out[inner, 2] - true_z[inner]).mean()
+    assert after < 0.5 * before
+    assert np.abs(out[:, :2] - g).max() < 2.0              # points stay where they were
 
 
 def test_boundary_points_found_on_a_patch_edge():
