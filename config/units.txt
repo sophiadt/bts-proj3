@@ -1,0 +1,64 @@
+UNIT SCALE — lab biomechanical facial model
+Confirmed: 2026-08-12
+
+AUTHORITATIVE SOURCE
+  Paper: "Beneath the Skin: Interactive Biomechanical Facial Simulations
+          via Composable Co-Expressions", Appendix C (Facial biomechanics).
+          papers/Beneath the Skin ... .pdf
+  Quote: "We measure the mandible of the virtual head model, and compare it
+          with the measurement of the mandible of one of the authors of this
+          survey.  In Maya, the width of the mandible is 155.92 units, and
+          the author's counterpart is 15 cm.  Thus, the unit mapping is
+          0.0962 cm per Maya unit."
+  Also Table 2, row "Unit mapping in Maya": 0.0962 cm per Maya unit.
+
+  So the scale is anthropometric, not a scene setting: 15 cm / 155.92 units
+  = 0.096203 cm/unit.  It is one author's mandible, measured once -- treat
+  0.962 as a stated constant of the model, not a measured property of a
+  population.
+
+THE NUMBERS
+  1 Maya unit = 9.62e-4 m
+              = 0.962 mm
+              = 0.0962 cm
+
+CONVERSIONS
+  length  mm  = maya_units * 0.962
+  area    mm2 = maya_units^2 * 0.925444
+  volume  mm3 = maya_units^3 * 0.890277128     <-- USE THIS FOR VOLUME
+
+CROSS-CHECK
+  Code: same 0.962 appears in a2_fromFrameGetDeltaB.py:987,
+        extract_skin_strain_energy.py:44, evaluator.py:1337/1459/1671,
+        observe_plot_forces_torque.py:32.
+
+  Scene header declares LUNI = cm.  THIS IS WRONG / nominal only.
+  Using cm would inflate volumes by (10/0.962)^3 = 1124x.
+
+MESH-IDENTITY CHECK  (verified 2026-09-08)
+  middleres_Jaw.npz frame 0, Z extent:
+      155.92 Maya units  =  149.99 mm  =  15.0 cm
+      149.99 / 155.92 = 0.9620
+
+  This is the SAME 155.92 the paper quotes, on the same axis.  What it
+  verifies:
+    1. we exported the mandible the paper actually measured, and
+    2. the export applied the paper's stated 0.962 scale.
+  What it does NOT do: independently confirm 0.962.  That number still
+  rests on the paper's single anthropometric measurement above.  Do not
+  cite this as validation of the scale itself.
+
+ANATOMICAL SANITY CHECK
+  Eye corner-to-corner: 45.877 units = 44.1 mm
+    (real adult ~30-31 mm).  Character 'jack01' is stylized with
+    enlarged eyes -- expected, not a scale error.
+  Head bbox: <fill in>
+  Mouth width: middleres_OrbicularisOris X extent 85.6 mm (frame 0)
+
+NOTES
+  - Volume factor 0.890277128 is close to 1.  A missing conversion will
+    NOT look obviously wrong in a results table.  Convert at EXPORT.
+    (Was recorded as 0.890177 until 2026-08-17 -- a typo, not a different
+     convention.  0.962^3 = 0.890277128 exactly.)
+  - Store mm in every .npz.  Never store raw Maya units.
+  - Record unit_scale=0.962 in each .npz for provenance.

@@ -1,0 +1,166 @@
+{
+  "source": {
+    "dataset": "3D Facial Norms Database, summary statistics (tdfn_gui_summary.csv)",
+    "url": "https://www.facebase.org/resources/human/facial_norms/summary/tdfn_gui_summary.csv",
+    "citation": "Weinberg SM, Raffensperger ZD, Kesterke MJ, et al. The 3D Facial Norms Database: Part 1. A Web-Based Craniofacial Anthropometric and Image Repository for the Clinical and Research Community. Cleft Palate Craniofac J. 2016;53(6):e185-e197. doi:10.1597/15-199",
+    "population": "US residents of self-reported white, non-Hispanic, recent European ancestry; 3D stereophotogrammetry",
+    "retrieved": "2026-10-24"
+  },
+  "derivation": "Adults only: every age band with lower bound >= 18 (18-40 years), pooled per sex. Pooled mean is n-weighted; pooled SD includes the between-band spread: var = sum((n_i-1) sd_i^2 + n_i (m_i - m)^2) / (N - 1).",
+  "csv_columns": "id, measure, age_from, age_to, sex (1 male, 2 female, 3 pooled), n, mean_mm, sd_mm",
+  "measures": {
+    "palpfislength_r": {
+      "name": "Palpebral Fissure Length Right",
+      "landmarks": [
+        "en_r",
+        "ex_r"
+      ],
+      "male": {
+        "n": 645,
+        "mean_mm": 28.93,
+        "sd_mm": 1.87
+      },
+      "female": {
+        "n": 1200,
+        "mean_mm": 27.99,
+        "sd_mm": 1.92
+      }
+    },
+    "palpfislength_l": {
+      "name": "Palpebral Fissure Length Left",
+      "landmarks": [
+        "en_l",
+        "ex_l"
+      ],
+      "male": {
+        "n": 645,
+        "mean_mm": 28.66,
+        "sd_mm": 1.9
+      },
+      "female": {
+        "n": 1200,
+        "mean_mm": 27.73,
+        "sd_mm": 2.01
+      }
+    },
+    "incanthwidth": {
+      "name": "Intercanthal Width",
+      "landmarks": [
+        "en_l",
+        "en_r"
+      ],
+      "male": {
+        "n": 654,
+        "mean_mm": 32.75,
+        "sd_mm": 2.92
+      },
+      "female": {
+        "n": 1213,
+        "mean_mm": 31.3,
+        "sd_mm": 2.75
+      }
+    },
+    "outcanthwidth": {
+      "name": "Outercanthal Width",
+      "landmarks": [
+        "ex_r",
+        "ex_l"
+      ],
+      "male": {
+        "n": 645,
+        "mean_mm": 88.94,
+        "sd_mm": 3.95
+      },
+      "female": {
+        "n": 1200,
+        "mean_mm": 85.52,
+        "sd_mm": 3.85
+      }
+    },
+    "labfiswidth": {
+      "name": "Labial Fissure Width",
+      "landmarks": [
+        "ch_r",
+        "ch_l"
+      ],
+      "male": {
+        "n": 655,
+        "mean_mm": 50.75,
+        "sd_mm": 3.8
+      },
+      "female": {
+        "n": 1215,
+        "mean_mm": 48.01,
+        "sd_mm": 3.48
+      }
+    },
+    "nasalheight": {
+      "name": "Nasal Height",
+      "landmarks": [
+        "n",
+        "sn"
+      ],
+      "male": {
+        "n": 656,
+        "mean_mm": 56.62,
+        "sd_mm": 3.95
+      },
+      "female": {
+        "n": 1216,
+        "mean_mm": 54.68,
+        "sd_mm": 3.85
+      }
+    },
+    "upfaceheight": {
+      "name": "Upper Facial Height",
+      "landmarks": [
+        "n",
+        "sto"
+      ],
+      "male": {
+        "n": 655,
+        "mean_mm": 78.09,
+        "sd_mm": 4.53
+      },
+      "female": {
+        "n": 1214,
+        "mean_mm": 74.16,
+        "sd_mm": 4.38
+      }
+    },
+    "lowfaceheight": {
+      "name": "Lower Facial Height",
+      "landmarks": [
+        "sn",
+        "gn"
+      ],
+      "male": {
+        "n": 630,
+        "mean_mm": 73.0,
+        "sd_mm": 5.34
+      },
+      "female": {
+        "n": 1196,
+        "mean_mm": 66.42,
+        "sd_mm": 4.97
+      }
+    },
+    "morphfaceheight": {
+      "name": "Morphological Facial Height",
+      "landmarks": [
+        "n",
+        "gn"
+      ],
+      "male": {
+        "n": 630,
+        "mean_mm": 127.03,
+        "sd_mm": 6.6
+      },
+      "female": {
+        "n": 1196,
+        "mean_mm": 118.51,
+        "sd_mm": 6.03
+      }
+    }
+  }
+}

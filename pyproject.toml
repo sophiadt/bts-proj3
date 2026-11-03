@@ -1,0 +1,20 @@
+[project]
+name = "bts-proj3"
+version = "0.1.0"
+description = "Automated facial asset initialisation: reshape the lab's Ziva head to a specific person."
+requires-python = ">=3.11"
+dependencies = [
+    "numpy",
+    "scipy",
+    "trimesh",
+    "rtree",       # trimesh proximity queries
+    "networkx",    # trimesh.split needs it
+    "matplotlib",
+]
+
+[project.optional-dependencies]
+test = ["pytest"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

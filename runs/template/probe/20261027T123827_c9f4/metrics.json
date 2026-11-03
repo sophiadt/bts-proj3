@@ -1,0 +1,460 @@
+{
+  "subject": "template",
+  "pathway": "probe",
+  "script": "rig/probe_scene.py",
+  "run_id": "20261027T123827_c9f4",
+  "status": "ok",
+  "error": null,
+  "traceback": null,
+  "started_at": "2026-10-27T12:38:27",
+  "wall_clock_s": 54.954,
+  "git": {
+    "sha": "7580e8138f0e02440529439842c243b098e6085f",
+    "dirty": true
+  },
+  "python": "3.9.7",
+  "packages": {
+    "numpy": "2.0.2",
+    "scipy": "1.13.1",
+    "trimesh": null
+  },
+  "metrics": {
+    "scene_md5": "b174b0d59a89495c6f57f779b8063b27",
+    "counts": {
+      "zSolver": 1,
+      "zSolverTransform": 1,
+      "zMaterial": 43,
+      "zTissue": 41,
+      "zFiber": 18,
+      "zBone": 11,
+      "zCloth": 2,
+      "zTet": 41,
+      "zAttachment": 140,
+      "zEmbedder": 1,
+      "zGeo": 55,
+      "zRestShape": 0,
+      "zLineOfAction": 0,
+      "zRivetToBone": 0
+    },
+    "n_bodies": 52,
+    "bodies": {
+      "jack01_MODEL1__jack01_c_loTeeth01_geo": {
+        "role": "bone",
+        "n_verts": 4483,
+        "n_faces": 8352,
+        "closed": false,
+        "rest_target": "|jack01_MODEL1|jack01_c_loTeeth01_geo|jack01_c_loTeeth01_geoShapeOrig1",
+        "rest_vs_output_max_mm": 0.0
+      },
+      "jack01_MODEL1__jack01_c_tongue01_geo": {
+        "role": "bone",
+        "n_verts": 236,
+        "n_faces": 426,
+        "closed": false,
+        "rest_target": "|jack01_MODEL1|jack01_c_tongue01_geo|jack01_c_tongue01_geoShapeOrig1",
+        "rest_vs_output_max_mm": 0.0
+      },
+      "jack01_c_head01_high_geo_bone": {
+        "role": "bone",
+        "n_verts": 92889,
+        "n_faces": 185552,
+        "closed": false,
+        "rest_target": "|jack01_MODEL|jack01_c_head01_high_geo_bone|jack01_c_head01_high_geo_boneShapeOrig2",
+        "rest_vs_output_max_mm": 5.539185371920466
+      },
+      "middleres_AlarCartidge": {
+        "role": "tissue",
+        "n_verts": 1226,
+        "n_faces": 2448,
+        "closed": true,
+        "rest_target": "|middleres_AlarCartidge|middleres_AlarCartidgeShapeOrig",
+        "rest_vs_output_max_mm": 9.174346935481026e-07
+      },
+      "middleres_Corrugator_l": {
+        "role": "tissue",
+        "n_verts": 3248,
+        "n_faces": 6492,
+        "closed": true,
+        "rest_target": "|middleres_Corrugator|middleres_Corrugator_l|middleres_Corrugator_lShapeOrig",
+        "rest_vs_output_max_mm": 1.8348693870962052e-06
+      },
+      "middleres_Corrugator_r": {
+        "role": "tissue",
+        "n_verts": 3248,
+        "n_faces": 6492,
+        "closed": true,
+        "rest_target": "|middleres_Corrugator|middleres_Corrugator_r|middleres_Corrugator_rShapeOrig",
+        "rest_vs_output_max_mm": 1.8348693835434915e-06
+      },
+      "middleres_DepressorLabiiInferioris_l": {
+        "role": "tissue",
+        "n_verts": 702,
+        "n_faces": 1400,
+        "closed": true,
+        "rest_target": "|middleres_DepressorLabiiInferioris|middleres_DepressorLabiiInferioris_l|middleres_DepressorLabiiInferioris_lShapeOrig",
+        "rest_vs_output_max_mm": 1.8348693870962052e-06
+      },
+      "middleres_DepressorLabiiInferioris_r": {
+        "role": "tissue",
+        "n_verts": 702,
+        "n_faces": 1400,
+        "closed": true,
+        "rest_target": "|middleres_DepressorLabiiInferioris|middleres_DepressorLabiiInferioris_r|middleres_DepressorLabiiInferioris_rShapeOrig",
+        "rest_vs_output_max_mm": 1.8348693870962052e-06
+      },
+      "middleres_DepressorSeptiNasi": {
+        "role": "tissue",
+        "n_verts": 576,
+        "n_faces": 1148,
+        "closed": true,
+        "rest_target": "|middleres_DepressorSeptiNasi|middleres_DepressorSeptiNasiShapeOrig",
+        "rest_vs_output_max_mm": 9.174346935481026e-07
+      },
+      "middleres_DepressorSupercilii_l": {
+        "role": "tissue",
+        "n_verts": 1240,
+        "n_faces": 2476,
+        "closed": true,
+        "rest_target": "|middleres_DepressorSupercilii|middleres_DepressorSupercilii_l|middleres_DepressorSupercilii_lShapeOrig",
+        "rest_vs_output_max_mm": 4.587173458858729e-07
+      },
+      "middleres_DepressorSupercilii_r": {
+        "role": "tissue",
+        "n_verts": 1240,
+        "n_faces": 2476,
+        "closed": true,
+        "rest_target": "|middleres_DepressorSupercilii|middleres_DepressorSupercilii_r|middleres_DepressorSupercilii_rShapeOrig",
+        "rest_vs_output_max_mm": 4.587173458858729e-07
+      },
+      "middleres_Eyes_l_simple": {
+        "role": "tissue",
+        "n_verts": 382,
+        "n_faces": 760,
+        "closed": true,
+        "rest_target": "|middleres_Eyes_l_simple|middleres_Eyes_l_simpleShapeOrig",
+        "rest_vs_output_max_mm": 3.6697387706396967e-06
+      },
+      "middleres_Eyes_r_simple": {
+        "role": "tissue",
+        "n_verts": 382,
+        "n_faces": 760,
+        "closed": true,
+        "rest_target": "|middleres_Eyes_r_simple|middleres_Eyes_r_simpleShapeOrig",
+        "rest_vs_output_max_mm": 1.8348693870962052e-06
+      },
+      "middleres_Frontalis": {
+        "role": "tissue",
+        "n_verts": 13448,
+        "n_faces": 26892,
+        "closed": true,
+        "rest_target": "|middleres_Frontalis|middleres_FrontalisShapeOrig",
+        "rest_vs_output_max_mm": 1.8348693870962052e-06
+      },
+      "middleres_Jaw": {
+        "role": "bone",
+        "n_verts": 7426,
+        "n_faces": 14848,
+        "closed": true,
+        "rest_target": "|middleres_Jaw|middleres_JawShapeOrig",
+        "rest_vs_output_max_mm": 0.0
+      },
+      "middleres_LateralCartige": {
+        "role": "tissue",
+        "n_verts": 5122,
+        "n_faces": 10240,
+        "closed": true,
+        "rest_target": "|middleres_LateralCartige|middleres_LateralCartigeShapeOrig",
+        "rest_vs_output_max_mm": 9.174346935481026e-07
+      },
+      "middleres_LevatorLabiiSuperioris_l": {
+        "role": "tissue",
+        "n_verts": 1186,
+        "n_faces": 2368,
+        "closed": true,
+        "rest_target": "|middleres_LevatorLabiiSuperioris|middleres_LevatorLabiiSuperioris_l|middleres_LevatorLabiiSuperioris_lShapeOrig",
+        "rest_vs_output_max_mm": 9.174346935481026e-07
+      },
+      "middleres_LevatorLabiiSuperioris_r": {
+        "role": "tissue",
+        "n_verts": 1186,
+        "n_faces": 2368,
+        "closed": true,
+        "rest_target": "|middleres_LevatorLabiiSuperioris|middleres_LevatorLabiiSuperioris_r|middleres_LevatorLabiiSuperioris_rShapeOrig",
+        "rest_vs_output_max_mm": 9.174346935481026e-07
+      },
+      "middleres_Mentalis": {
+        "role": "tissue",
+        "n_verts": 1210,
+        "n_faces": 2416,
+        "closed": true,
+        "rest_target": "|middleres_Mentalis|middleres_MentalisShapeOrig",
+        "rest_vs_output_max_mm": 1.8348693870962052e-06
+      },
+      "middleres_NasalisTransverse": {
+        "role": "tissue",
+        "n_verts": 3596,
+        "n_faces": 7188,
+        "closed": true,
+        "rest_target": "|middleres_NasalisTransverse|middleres_NasalisTransverseShapeOrig",
+        "rest_vs_output_max_mm": 9.174346935481026e-07
+      },
+      "middleres_NostrilWing": {
+        "role": "tissue",
+        "n_verts": 4352,
+        "n_faces": 8696,
+        "closed": true,
+        "rest_target": "|middleres_NostrilWing|middleres_NostrilWingShapeOrig",
+        "rest_vs_output_max_mm": 9.174346935481026e-07
+      },
+      "middleres_OrbicularisOculi_l": {
+        "role": "tissue",
+        "n_verts": 8064,
+        "n_faces": 16128,
+        "closed": true,
+        "rest_target": "|middleres_OrbicularisOculi|middleres_OrbicularisOculi_l|middleres_OrbicularisOculi_lShape5Orig",
+        "rest_vs_output_max_mm": 1.8348693870962052e-06
+      },
+      "middleres_OrbicularisOculi_r": {
+        "role": "tissue",
+        "n_verts": 8064,
+        "n_faces": 16128,
+        "closed": true,
+        "rest_target": "|middleres_OrbicularisOculi|middleres_OrbicularisOculi_r|middleres_OrbicularisOculi_rShapeOrig",
+        "rest_vs_output_max_mm": 1.8348693870962052e-06
+      },
+      "middleres_OrbicularisOris": {
+        "role": "tissue",
+        "n_verts": 10240,
+        "n_faces": 20480,
+        "closed": true,
+        "rest_target": "|middleres_OrbicularisOris|middleres_OrbicularisOrisShapeOrig",
+        "rest_vs_output_max_mm": 1.8348693870962052e-06
+      },
+      "middleres_Procerus": {
+        "role": "tissue",
+        "n_verts": 4724,
+        "n_faces": 9444,
+        "closed": true,
+        "rest_target": "|middleres_Procerus|middleres_ProcerusShapeOrig",
+        "rest_vs_output_max_mm": 4.587173467740513e-07
+      },
+      "middleres_TeethDown": {
+        "role": "bone",
+        "n_verts": 24608,
+        "n_faces": 49152,
+        "closed": true,
+        "rest_target": "|middleres_TeethDown|middleres_TeethDownShapeOrig",
+        "rest_vs_output_max_mm": 0.0
+      },
+      "middleres_TeethUp": {
+        "role": "bone",
+        "n_verts": 24608,
+        "n_faces": 49152,
+        "closed": true,
+        "rest_target": "|middleres_TeethUp|middleres_TeethUpShapeOrig",
+        "rest_vs_output_max_mm": 0.0
+      },
+      "middleres_Temporalis_l": {
+        "role": "tissue",
+        "n_verts": 10038,
+        "n_faces": 20072,
+        "closed": true,
+        "rest_target": "|middleres_Temporalis|middleres_Temporalis_l|middleres_Temporalis_lShapeOrig",
+        "rest_vs_output_max_mm": 3.6697387741924103e-06
+      },
+      "middleres_Temporalis_r": {
+        "role": "tissue",
+        "n_verts": 10038,
+        "n_faces": 20072,
+        "closed": true,
+        "rest_target": "|middleres_Temporalis|middleres_Temporalis_r|middleres_Temporalis_rShapeOrig",
+        "rest_vs_output_max_mm": 3.6697387741924103e-06
+      },
+      "middleres_ZygomaticusMajor_l": {
+        "role": "tissue",
+        "n_verts": 1186,
+        "n_faces": 2368,
+        "closed": true,
+        "rest_target": "|middleres_ZygomaticusMajor|middleres_ZygomaticusMajor_l|middleres_ZygomaticusMajor_lShape6Orig",
+        "rest_vs_output_max_mm": 1.8348693870962052e-06
+      },
+      "middleres_ZygomaticusMajor_r": {
+        "role": "tissue",
+        "n_verts": 1186,
+        "n_faces": 2368,
+        "closed": true,
+        "rest_target": "|middleres_ZygomaticusMajor|middleres_ZygomaticusMajor_r|middleres_ZygomaticusMajor_rShape5Orig",
+        "rest_vs_output_max_mm": 1.8348693870962052e-06
+      },
+      "middleres_ZygomaticusMinor_l": {
+        "role": "tissue",
+        "n_verts": 1186,
+        "n_faces": 2368,
+        "closed": true,
+        "rest_target": "|middleres_ZygomaticusMinor|middleres_ZygomaticusMinor_l|middleres_ZygomaticusMinor_lShapeOrig",
+        "rest_vs_output_max_mm": 1.8348693870962052e-06
+      },
+      "middleres_ZygomaticusMinor_r": {
+        "role": "tissue",
+        "n_verts": 1186,
+        "n_faces": 2368,
+        "closed": true,
+        "rest_target": "|middleres_ZygomaticusMinor|middleres_ZygomaticusMinor_r|middleres_ZygomaticusMinor_rShapeOrig",
+        "rest_vs_output_max_mm": 1.8348693870962052e-06
+      },
+      "middleres_skull": {
+        "role": "bone",
+        "n_verts": 28414,
+        "n_faces": 56832,
+        "closed": true,
+        "rest_target": "|middleres_skull|middleres_skullShapeOrig",
+        "rest_vs_output_max_mm": 0.0
+      },
+      "polySurface1": {
+        "role": "tissue",
+        "n_verts": 1364,
+        "n_faces": 2724,
+        "closed": true,
+        "rest_target": "|middleres_Buccinator|polySurface1|polySurfaceShape1Orig",
+        "rest_vs_output_max_mm": 1.8348693870962052e-06
+      },
+      "polySurface10": {
+        "role": "tissue",
+        "n_verts": 968,
+        "n_faces": 1932,
+        "closed": true,
+        "rest_target": "|middleres_PlatysmaNodularPortion|polySurface10|polySurfaceShape10Orig",
+        "rest_vs_output_max_mm": 1.8348693870962052e-06
+      },
+      "polySurface11": {
+        "role": "tissue",
+        "n_verts": 1066,
+        "n_faces": 2128,
+        "closed": true,
+        "rest_target": "|middleres_DepresorAnguliOris|polySurface11|polySurfaceShape11Orig",
+        "rest_vs_output_max_mm": 1.8348693870962052e-06
+      },
+      "polySurface12": {
+        "role": "tissue",
+        "n_verts": 1066,
+        "n_faces": 2128,
+        "closed": true,
+        "rest_target": "|middleres_DepresorAnguliOris|polySurface12|polySurfaceShape12Orig",
+        "rest_vs_output_max_mm": 1.8348693870962052e-06
+      },
+      "polySurface13": {
+        "role": "tissue",
+        "n_verts": 1764,
+        "n_faces": 3524,
+        "closed": true,
+        "rest_target": "|middleres_LevatorLabiiSuperiorisAlaequeNasi|polySurface13|polySurfaceShape13Orig",
+        "rest_vs_output_max_mm": 9.174346935481026e-07
+      },
+      "polySurface14": {
+        "role": "tissue",
+        "n_verts": 1764,
+        "n_faces": 3524,
+        "closed": true,
+        "rest_target": "|middleres_LevatorLabiiSuperiorisAlaequeNasi|polySurface14|polySurfaceShape14Orig",
+        "rest_vs_output_max_mm": 9.174346935481026e-07
+      },
+      "polySurface15": {
+        "role": "bone",
+        "n_verts": 3577,
+        "n_faces": 7040,
+        "closed": false,
+        "rest_target": "|middleres_Ear|polySurface15|polySurfaceShape15Orig",
+        "rest_vs_output_max_mm": 0.0
+      },
+      "polySurface16": {
+        "role": "bone",
+        "n_verts": 3577,
+        "n_faces": 7040,
+        "closed": false,
+        "rest_target": "|middleres_Ear|polySurface16|polySurfaceShape16Orig",
+        "rest_vs_output_max_mm": 0.0
+      },
+      "polySurface2": {
+        "role": "tissue",
+        "n_verts": 1364,
+        "n_faces": 2724,
+        "closed": true,
+        "rest_target": "|middleres_Buccinator|polySurface2|polySurfaceShape2Orig",
+        "rest_vs_output_max_mm": 1.8348693870962052e-06
+      },
+      "polySurface3": {
+        "role": "tissue",
+        "n_verts": 254,
+        "n_faces": 504,
+        "closed": true,
+        "rest_target": "|middleres_Node|polySurface3|polySurfaceShape3Orig",
+        "rest_vs_output_max_mm": 1.376152038545797e-06
+      },
+      "polySurface4": {
+        "role": "tissue",
+        "n_verts": 254,
+        "n_faces": 504,
+        "closed": true,
+        "rest_target": "|middleres_Node|polySurface4|polySurfaceShape4Orig",
+        "rest_vs_output_max_mm": 1.8348693853198483e-06
+      },
+      "polySurface5": {
+        "role": "tissue",
+        "n_verts": 2900,
+        "n_faces": 5796,
+        "closed": true,
+        "rest_target": "|middleres_MasseterSuperior|polySurface5|polySurfaceShape5Orig",
+        "rest_vs_output_max_mm": 3.6697387741924103e-06
+      },
+      "polySurface6": {
+        "role": "tissue",
+        "n_verts": 2900,
+        "n_faces": 5796,
+        "closed": true,
+        "rest_target": "|middleres_MasseterSuperior|polySurface6|polySurfaceShape6Orig",
+        "rest_vs_output_max_mm": 3.669738767086983e-06
+      },
+      "polySurface7": {
+        "role": "tissue",
+        "n_verts": 856,
+        "n_faces": 1708,
+        "closed": true,
+        "rest_target": "|middleres_Risorius|polySurface7|polySurfaceShape7Orig",
+        "rest_vs_output_max_mm": 1.8348693870962052e-06
+      },
+      "polySurface8": {
+        "role": "tissue",
+        "n_verts": 856,
+        "n_faces": 1708,
+        "closed": true,
+        "rest_target": "|middleres_Risorius|polySurface8|polySurfaceShape8Orig",
+        "rest_vs_output_max_mm": 1.8348693870962052e-06
+      },
+      "polySurface9": {
+        "role": "tissue",
+        "n_verts": 968,
+        "n_faces": 1932,
+        "closed": true,
+        "rest_target": "|middleres_PlatysmaNodularPortion|polySurface9|polySurfaceShape9Orig",
+        "rest_vs_output_max_mm": 1.8348693870962052e-06
+      },
+      "skin_cloth": {
+        "role": "cloth",
+        "n_verts": 47142,
+        "n_faces": 93440,
+        "closed": false,
+        "rest_target": "|jack01_MODEL|skin_cloth|skin_clothShapeOrig",
+        "rest_vs_output_max_mm": 5.539185343250631
+      },
+      "skin_cloth_copy_v5_pull_back": {
+        "role": "cloth",
+        "n_verts": 15905,
+        "n_faces": 31225,
+        "closed": false,
+        "rest_target": "|skin_cloth_copy_v5_pull_back|skin_cloth_copy_v5_pull_backShapeOrig3",
+        "rest_vs_output_max_mm": 12.427460250854494
+      }
+    },
+    "attachment_array_attrs": []
+  }
+}

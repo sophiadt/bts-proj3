@@ -1,0 +1,884 @@
+{
+  "subject": "template",
+  "pathway": "roundtrip",
+  "script": "rig/roundtrip_test.py",
+  "run_id": "20261027T124351_d260",
+  "status": "failed",
+  "error": "SystemExit(2)",
+  "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\syd3\\bts-proj3\\rig\\roundtrip_test.py\", line 134, in main\n    sys.exit(2)\nSystemExit: 2\n",
+  "started_at": "2026-10-27T12:43:51",
+  "wall_clock_s": 354.547,
+  "git": {
+    "sha": "7580e8138f0e02440529439842c243b098e6085f",
+    "dirty": true
+  },
+  "python": "3.9.7",
+  "packages": {
+    "numpy": "2.0.2",
+    "scipy": "1.13.1",
+    "trimesh": null
+  },
+  "metrics": {
+    "frames": [
+      0,
+      1,
+      5,
+      10,
+      20,
+      30
+    ],
+    "pivot_mm": [
+      -0.0025699117717448644,
+      18.354654436918505,
+      122.8712476589808
+    ],
+    "n_bodies": 52,
+    "n_joints": 1216,
+    "baseline": {
+      "muted_plugs": 12134,
+      "finite": true
+    },
+    "identity": {
+      "readback_max_mm": 4.336808689942018e-19,
+      "muted_plugs": 12134,
+      "finite": true,
+      "max_diff_mm": 1.7394406981452448e-05,
+      "per_body_max_diff_mm": {
+        "jack01_MODEL1__jack01_c_loTeeth01_geo": 0.0,
+        "jack01_MODEL1__jack01_c_tongue01_geo": 0.0,
+        "jack01_c_head01_high_geo_bone": 0.0,
+        "middleres_AlarCartidge": 0.0,
+        "middleres_Corrugator_l": 0.0,
+        "middleres_Corrugator_r": 0.0,
+        "middleres_DepressorLabiiInferioris_l": 0.0,
+        "middleres_DepressorLabiiInferioris_r": 0.0,
+        "middleres_DepressorSeptiNasi": 0.0,
+        "middleres_DepressorSupercilii_l": 0.0,
+        "middleres_DepressorSupercilii_r": 0.0,
+        "middleres_Eyes_l_simple": 0.0,
+        "middleres_Eyes_r_simple": 0.0,
+        "middleres_Frontalis": 0.0,
+        "middleres_Jaw": 0.0,
+        "middleres_LateralCartige": 2.710505431213761e-16,
+        "middleres_LevatorLabiiSuperioris_l": 0.0,
+        "middleres_LevatorLabiiSuperioris_r": 0.0,
+        "middleres_Mentalis": 0.0,
+        "middleres_NasalisTransverse": 0.0,
+        "middleres_NostrilWing": 0.0,
+        "middleres_OrbicularisOculi_l": 0.0,
+        "middleres_OrbicularisOculi_r": 0.0,
+        "middleres_OrbicularisOris": 0.0,
+        "middleres_Procerus": 0.0,
+        "middleres_TeethDown": 0.0,
+        "middleres_TeethUp": 0.0,
+        "middleres_Temporalis_l": 0.0,
+        "middleres_Temporalis_r": 0.0,
+        "middleres_ZygomaticusMajor_l": 0.0,
+        "middleres_ZygomaticusMajor_r": 0.0,
+        "middleres_ZygomaticusMinor_l": 0.0,
+        "middleres_ZygomaticusMinor_r": 0.0,
+        "middleres_skull": 0.0,
+        "polySurface1": 0.0,
+        "polySurface10": 0.0,
+        "polySurface11": 0.0,
+        "polySurface12": 0.0,
+        "polySurface13": 0.0,
+        "polySurface14": 0.0,
+        "polySurface15": 0.0,
+        "polySurface16": 0.0,
+        "polySurface2": 0.0,
+        "polySurface3": 0.0,
+        "polySurface4": 0.0,
+        "polySurface5": 0.0,
+        "polySurface6": 0.0,
+        "polySurface7": 0.0,
+        "polySurface8": 0.0,
+        "polySurface9": 0.0,
+        "skin_cloth": 0.0,
+        "skin_cloth_copy_v5_pull_back": 1.7394406981452448e-05
+      },
+      "pass": true
+    },
+    "scale_1.05": {
+      "readback_max_mm": 0.00010385928408140899,
+      "joints": {
+        "moved": 1216,
+        "max_residual_mm": 8.52836300009429e-14,
+        "rebound": [
+          "skinCluster1",
+          "skinCluster2",
+          "skinCluster4",
+          "skinCluster5",
+          "skinCluster7",
+          "skinCluster8",
+          "skinCluster9",
+          "skinCluster12",
+          "skinCluster13"
+        ]
+      },
+      "muted_plugs": 12134,
+      "finite": true,
+      "per_body": {
+        "jack01_MODEL1__jack01_c_loTeeth01_geo": {
+          "max_dev_mm": 9.537388316688888,
+          "max_dev_last_frame_mm": 9.537388316688888,
+          "kept_median_last": -0.05063210083065628,
+          "kept_p05_last": -0.38032972603064724,
+          "frame0_max_dev_mm": 9.537388316688888
+        },
+        "jack01_MODEL1__jack01_c_tongue01_geo": {
+          "max_dev_mm": 9.045157836090471,
+          "max_dev_last_frame_mm": 9.045157836090471,
+          "kept_median_last": -0.20835360863540808,
+          "kept_p05_last": -0.6614472155056605,
+          "frame0_max_dev_mm": 9.045157836090471
+        },
+        "jack01_c_head01_high_geo_bone": {
+          "max_dev_mm": 88.39295589893158,
+          "max_dev_last_frame_mm": 88.39295589893158,
+          "kept_median_last": 0.9999934450044999,
+          "kept_p05_last": 0.9999836936137211,
+          "frame0_max_dev_mm": 88.39295589893158
+        },
+        "middleres_AlarCartidge": {
+          "max_dev_mm": 8.055345911696,
+          "max_dev_last_frame_mm": 8.055273452736037,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -1.465938176403725e-08,
+          "frame0_max_dev_mm": 8.055345911696
+        },
+        "middleres_Corrugator_l": {
+          "max_dev_mm": 6.434564323207142,
+          "max_dev_last_frame_mm": 6.434551956311602,
+          "kept_median_last": 0.0,
+          "kept_p05_last": 0.0,
+          "frame0_max_dev_mm": 6.434564323207142
+        },
+        "middleres_Corrugator_r": {
+          "max_dev_mm": 6.43453845099153,
+          "max_dev_last_frame_mm": 6.434505545855117,
+          "kept_median_last": 0.0,
+          "kept_p05_last": 0.0,
+          "frame0_max_dev_mm": 6.43453845099153
+        },
+        "middleres_DepressorLabiiInferioris_l": {
+          "max_dev_mm": 10.102298979094892,
+          "max_dev_last_frame_mm": 10.102207914193794,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -3.8734129245154845e-07,
+          "frame0_max_dev_mm": 10.102298979094892
+        },
+        "middleres_DepressorLabiiInferioris_r": {
+          "max_dev_mm": 10.1024379604496,
+          "max_dev_last_frame_mm": 10.10239801229824,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -3.8140935060271275e-07,
+          "frame0_max_dev_mm": 10.1024379604496
+        },
+        "middleres_DepressorSeptiNasi": {
+          "max_dev_mm": 7.506721001546978,
+          "max_dev_last_frame_mm": 7.506721001546978,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -1.4075112986233762e-07,
+          "frame0_max_dev_mm": 7.506720500455896
+        },
+        "middleres_DepressorSupercilii_l": {
+          "max_dev_mm": 6.666183324505777,
+          "max_dev_last_frame_mm": 6.6656903949833,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -2.273209561698408e-08,
+          "frame0_max_dev_mm": 6.666183324505777
+        },
+        "middleres_DepressorSupercilii_r": {
+          "max_dev_mm": 6.666183216963449,
+          "max_dev_last_frame_mm": 6.665798237159023,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -2.084396638624142e-08,
+          "frame0_max_dev_mm": 6.666183216963449
+        },
+        "middleres_Eyes_l_simple": {
+          "max_dev_mm": 6.1652656640480545,
+          "max_dev_last_frame_mm": 6.160285253522403,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -3.0739286408509866e-07,
+          "frame0_max_dev_mm": 6.1652656640480545
+        },
+        "middleres_Eyes_r_simple": {
+          "max_dev_mm": 6.165261170483984,
+          "max_dev_last_frame_mm": 6.161083758614752,
+          "kept_median_last": -2.1866601640496697e-08,
+          "kept_p05_last": -2.4623725451977664e-07,
+          "frame0_max_dev_mm": 6.165261170483984
+        },
+        "middleres_Frontalis": {
+          "max_dev_mm": 7.18141173767752,
+          "max_dev_last_frame_mm": 7.1814018188864726,
+          "kept_median_last": 0.0,
+          "kept_p05_last": 0.0,
+          "frame0_max_dev_mm": 7.18141173767752
+        },
+        "middleres_Jaw": {
+          "max_dev_mm": 6.5244606638615054e-06,
+          "max_dev_last_frame_mm": 6.5244606638615054e-06,
+          "kept_median_last": 0.9999996623387379,
+          "kept_p05_last": 0.9999991182163234,
+          "frame0_max_dev_mm": 6.5244606638615054e-06
+        },
+        "middleres_LateralCartige": {
+          "max_dev_mm": 7.862254202320274,
+          "max_dev_last_frame_mm": 7.862254202320274,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -4.583896442422741e-08,
+          "frame0_max_dev_mm": 7.862242320988362
+        },
+        "middleres_LevatorLabiiSuperioris_l": {
+          "max_dev_mm": 7.900852681034276,
+          "max_dev_last_frame_mm": 7.900852681034276,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -1.627619705679706e-07,
+          "frame0_max_dev_mm": 7.891258535386185
+        },
+        "middleres_LevatorLabiiSuperioris_r": {
+          "max_dev_mm": 7.897706111759891,
+          "max_dev_last_frame_mm": 7.897706111759891,
+          "kept_median_last": 1.8405835078283417e-08,
+          "kept_p05_last": 0.0,
+          "frame0_max_dev_mm": 7.891301241628215
+        },
+        "middleres_Mentalis": {
+          "max_dev_mm": 10.69522034787586,
+          "max_dev_last_frame_mm": 10.69522034787586,
+          "kept_median_last": -1.3336973314626022e-07,
+          "kept_p05_last": -5.112773756144052e-07,
+          "frame0_max_dev_mm": 10.680594864443698
+        },
+        "middleres_NasalisTransverse": {
+          "max_dev_mm": 7.487997664864163,
+          "max_dev_last_frame_mm": 7.487997664864163,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -1.0428438113052607e-08,
+          "frame0_max_dev_mm": 7.487992776853416
+        },
+        "middleres_NostrilWing": {
+          "max_dev_mm": 7.7820290925958675,
+          "max_dev_last_frame_mm": 7.7820290925958675,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -1.0649796364781138e-07,
+          "frame0_max_dev_mm": 7.782002222371432
+        },
+        "middleres_OrbicularisOculi_l": {
+          "max_dev_mm": 6.493140858511701,
+          "max_dev_last_frame_mm": 6.4929797838350565,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -9.071995493714621e-08,
+          "frame0_max_dev_mm": 6.493140858511701
+        },
+        "middleres_OrbicularisOculi_r": {
+          "max_dev_mm": 6.4931371234989985,
+          "max_dev_last_frame_mm": 6.4930253303168675,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -4.061209572303603e-07,
+          "frame0_max_dev_mm": 6.4931371234989985
+        },
+        "middleres_OrbicularisOris": {
+          "max_dev_mm": 9.329531190677894,
+          "max_dev_last_frame_mm": 9.329531190677894,
+          "kept_median_last": 1.21659178842215e-08,
+          "kept_p05_last": -1.9750276885055483e-07,
+          "frame0_max_dev_mm": 9.323506067895808
+        },
+        "middleres_Procerus": {
+          "max_dev_mm": 7.019535853814633,
+          "max_dev_last_frame_mm": 7.0176415210252205,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -5.1103473008851095e-09,
+          "frame0_max_dev_mm": 7.019535853814633
+        },
+        "middleres_TeethDown": {
+          "max_dev_mm": 3.27931255005508e-06,
+          "max_dev_last_frame_mm": 3.27931255005508e-06,
+          "kept_median_last": 0.9999998845471876,
+          "kept_p05_last": 0.9999997082991007,
+          "frame0_max_dev_mm": 3.27931255005508e-06
+        },
+        "middleres_TeethUp": {
+          "max_dev_mm": 8.44361986551648,
+          "max_dev_last_frame_mm": 8.44361986551648,
+          "kept_median_last": -0.017357449195241292,
+          "kept_p05_last": -0.049597965035843336,
+          "frame0_max_dev_mm": 8.44361986551648
+        },
+        "middleres_Temporalis_l": {
+          "max_dev_mm": 7.040259692209592,
+          "max_dev_last_frame_mm": 7.04023099432088,
+          "kept_median_last": 0.0,
+          "kept_p05_last": 0.0,
+          "frame0_max_dev_mm": 7.040259692209592
+        },
+        "middleres_Temporalis_r": {
+          "max_dev_mm": 7.040252361493199,
+          "max_dev_last_frame_mm": 7.040223121422731,
+          "kept_median_last": 0.0,
+          "kept_p05_last": 0.0,
+          "frame0_max_dev_mm": 7.040252361493199
+        },
+        "middleres_ZygomaticusMajor_l": {
+          "max_dev_mm": 7.57676072803894,
+          "max_dev_last_frame_mm": 7.57676072803894,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -3.9426269454745366e-07,
+          "frame0_max_dev_mm": 7.566067120590877
+        },
+        "middleres_ZygomaticusMajor_r": {
+          "max_dev_mm": 7.570982050841582,
+          "max_dev_last_frame_mm": 7.570982050841582,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -6.005542564913036e-07,
+          "frame0_max_dev_mm": 7.566134299323773
+        },
+        "middleres_ZygomaticusMinor_l": {
+          "max_dev_mm": 7.677170914791525,
+          "max_dev_last_frame_mm": 7.677170914791525,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -3.08862742548488e-07,
+          "frame0_max_dev_mm": 7.6765075200200075
+        },
+        "middleres_ZygomaticusMinor_r": {
+          "max_dev_mm": 7.68181456354226,
+          "max_dev_last_frame_mm": 7.68181456354226,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -2.9094931308648597e-07,
+          "frame0_max_dev_mm": 7.676480264060334
+        },
+        "middleres_skull": {
+          "max_dev_mm": 1.2957636481420728e-05,
+          "max_dev_last_frame_mm": 1.2957636481420728e-05,
+          "kept_median_last": 0.9999993925881088,
+          "kept_p05_last": 0.9999986612096792,
+          "frame0_max_dev_mm": 1.2957636481420728e-05
+        },
+        "polySurface1": {
+          "max_dev_mm": 8.288780771188899,
+          "max_dev_last_frame_mm": 8.288780771188899,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -2.189555446174829e-07,
+          "frame0_max_dev_mm": 8.288773086505724
+        },
+        "polySurface10": {
+          "max_dev_mm": 8.531112024112389,
+          "max_dev_last_frame_mm": 8.531112024112389,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -1.758790554529099e-07,
+          "frame0_max_dev_mm": 8.531094445301253
+        },
+        "polySurface11": {
+          "max_dev_mm": 10.144370372214189,
+          "max_dev_last_frame_mm": 10.144370372214189,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -2.148943181179419e-07,
+          "frame0_max_dev_mm": 10.144366412584331
+        },
+        "polySurface12": {
+          "max_dev_mm": 10.144131364397552,
+          "max_dev_last_frame_mm": 10.144131364397552,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -2.1708056091584993e-07,
+          "frame0_max_dev_mm": 10.14412723296108
+        },
+        "polySurface13": {
+          "max_dev_mm": 7.294789499991095,
+          "max_dev_last_frame_mm": 7.294789499991095,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -1.5990729973491777e-08,
+          "frame0_max_dev_mm": 7.294789407620955
+        },
+        "polySurface14": {
+          "max_dev_mm": 7.294827670847048,
+          "max_dev_last_frame_mm": 7.294826801275975,
+          "kept_median_last": 0.0,
+          "kept_p05_last": 0.0,
+          "frame0_max_dev_mm": 7.294827670847048
+        },
+        "polySurface15": {
+          "max_dev_mm": 6.447991857000684,
+          "max_dev_last_frame_mm": 6.447991857000684,
+          "kept_median_last": 0.07605685676421758,
+          "kept_p05_last": 0.009089530626010279,
+          "frame0_max_dev_mm": 6.447991857000684
+        },
+        "polySurface16": {
+          "max_dev_mm": 6.447981965827042,
+          "max_dev_last_frame_mm": 6.447981965827042,
+          "kept_median_last": 0.07565622847100595,
+          "kept_p05_last": 0.009015989679305059,
+          "frame0_max_dev_mm": 6.447981965827042
+        },
+        "polySurface2": {
+          "max_dev_mm": 8.28871168972098,
+          "max_dev_last_frame_mm": 8.28871168972098,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -3.4560636655855955e-07,
+          "frame0_max_dev_mm": 8.288708572301426
+        },
+        "polySurface3": {
+          "max_dev_mm": 7.907412602135971,
+          "max_dev_last_frame_mm": 7.907412602135971,
+          "kept_median_last": 1.0514340265110889e-07,
+          "kept_p05_last": -2.20790198968146e-07,
+          "frame0_max_dev_mm": 7.902529540785411
+        },
+        "polySurface4": {
+          "max_dev_mm": 7.909248938850893,
+          "max_dev_last_frame_mm": 7.909248938850893,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -3.208923428754673e-07,
+          "frame0_max_dev_mm": 7.902566560008446
+        },
+        "polySurface5": {
+          "max_dev_mm": 8.117955284883049,
+          "max_dev_last_frame_mm": 8.117955284883049,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -2.5558257105151583e-07,
+          "frame0_max_dev_mm": 8.117929362079103
+        },
+        "polySurface6": {
+          "max_dev_mm": 8.117946171835955,
+          "max_dev_last_frame_mm": 8.117946171835955,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -2.1472688002122096e-07,
+          "frame0_max_dev_mm": 8.117917985766661
+        },
+        "polySurface7": {
+          "max_dev_mm": 7.601365153618249,
+          "max_dev_last_frame_mm": 7.601365153618249,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -4.3977797686833853e-07,
+          "frame0_max_dev_mm": 7.601356929399075
+        },
+        "polySurface8": {
+          "max_dev_mm": 7.601351474537134,
+          "max_dev_last_frame_mm": 7.601351474537134,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -2.4446347940410007e-07,
+          "frame0_max_dev_mm": 7.601347105296945
+        },
+        "polySurface9": {
+          "max_dev_mm": 8.531256944385891,
+          "max_dev_last_frame_mm": 8.531256944385891,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -2.555502726542258e-07,
+          "frame0_max_dev_mm": 8.531239241590734
+        },
+        "skin_cloth": {
+          "max_dev_mm": 10.432573126821994,
+          "max_dev_last_frame_mm": 10.432573126821994,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -3.304154283512148e-10,
+          "frame0_max_dev_mm": 10.432573126821994
+        },
+        "skin_cloth_copy_v5_pull_back": {
+          "max_dev_mm": 10.528139447014013,
+          "max_dev_last_frame_mm": 10.528139447014013,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -0.002016990972993682,
+          "frame0_max_dev_mm": 10.528139447014013
+        }
+      },
+      "kept_median_worst_body": -0.20835360863540808,
+      "max_dev_mm": 88.39295589893158,
+      "frame0_max_dev_mm": 88.39295589893158,
+      "pass": false
+    },
+    "scale_0.75": {
+      "readback_max_mm": 0.00010378924116594135,
+      "joints": {
+        "moved": 1216,
+        "max_residual_mm": 4.7664655742347644e-14,
+        "rebound": [
+          "skinCluster1",
+          "skinCluster2",
+          "skinCluster4",
+          "skinCluster5",
+          "skinCluster7",
+          "skinCluster8",
+          "skinCluster9",
+          "skinCluster12",
+          "skinCluster13"
+        ]
+      },
+      "muted_plugs": 12134,
+      "finite": true,
+      "per_body": {
+        "jack01_MODEL1__jack01_c_loTeeth01_geo": {
+          "max_dev_mm": 40.410181488141326,
+          "max_dev_last_frame_mm": 40.410181488141326,
+          "kept_median_last": 0.24428210202823097,
+          "kept_p05_last": -0.20272637211902206,
+          "frame0_max_dev_mm": 40.410181488141326
+        },
+        "jack01_MODEL1__jack01_c_tongue01_geo": {
+          "max_dev_mm": 38.95190934848252,
+          "max_dev_last_frame_mm": 38.95190934848252,
+          "kept_median_last": -0.014257183564286513,
+          "kept_p05_last": -0.4071132385355241,
+          "frame0_max_dev_mm": 38.95190934848252
+        },
+        "jack01_c_head01_high_geo_bone": {
+          "max_dev_mm": 63.13784674290577,
+          "max_dev_last_frame_mm": 63.13784674290577,
+          "kept_median_last": 0.9999986490079854,
+          "kept_p05_last": 0.9999958819527528,
+          "frame0_max_dev_mm": 63.13784674290577
+        },
+        "middleres_AlarCartidge": {
+          "max_dev_mm": 40.27672955848003,
+          "max_dev_last_frame_mm": 40.27636726368019,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -3.546042681712436e-08,
+          "frame0_max_dev_mm": 40.27672955848003
+        },
+        "middleres_Corrugator_l": {
+          "max_dev_mm": 32.17282161603566,
+          "max_dev_last_frame_mm": 32.172759781557986,
+          "kept_median_last": 0.0,
+          "kept_p05_last": 0.0,
+          "frame0_max_dev_mm": 32.17282161603566
+        },
+        "middleres_Corrugator_r": {
+          "max_dev_mm": 32.17269225495759,
+          "max_dev_last_frame_mm": 32.17252772927559,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -9.118443156097556e-09,
+          "frame0_max_dev_mm": 32.17269225495759
+        },
+        "middleres_DepressorLabiiInferioris_l": {
+          "max_dev_mm": 50.51149489547438,
+          "max_dev_last_frame_mm": 50.511039570968904,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -1.9681001486304695e-07,
+          "frame0_max_dev_mm": 50.51149489547438
+        },
+        "middleres_DepressorLabiiInferioris_r": {
+          "max_dev_mm": 50.51218980224797,
+          "max_dev_last_frame_mm": 50.51198691070696,
+          "kept_median_last": 3.0290860320025814e-08,
+          "kept_p05_last": -6.579719102894899e-08,
+          "frame0_max_dev_mm": 50.51218980224797
+        },
+        "middleres_DepressorSeptiNasi": {
+          "max_dev_mm": 37.53360608098977,
+          "max_dev_last_frame_mm": 37.53360608098977,
+          "kept_median_last": -1.1921941212023057e-10,
+          "kept_p05_last": -2.953236061253861e-08,
+          "frame0_max_dev_mm": 37.53360250227933
+        },
+        "middleres_DepressorSupercilii_l": {
+          "max_dev_mm": 33.330916622528875,
+          "max_dev_last_frame_mm": 33.32845197491644,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -8.83823342290313e-09,
+          "frame0_max_dev_mm": 33.330916622528875
+        },
+        "middleres_DepressorSupercilii_r": {
+          "max_dev_mm": 33.3309160848173,
+          "max_dev_last_frame_mm": 33.32899146383324,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -8.414610386253685e-09,
+          "frame0_max_dev_mm": 33.3309160848173
+        },
+        "middleres_Eyes_l_simple": {
+          "max_dev_mm": 30.826328320240247,
+          "max_dev_last_frame_mm": 30.801416619308057,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -6.296235435243602e-08,
+          "frame0_max_dev_mm": 30.826328320240247
+        },
+        "middleres_Eyes_r_simple": {
+          "max_dev_mm": 30.826305852419836,
+          "max_dev_last_frame_mm": 30.80542277028336,
+          "kept_median_last": 4.9106278487975885e-09,
+          "kept_p05_last": -3.123607860144872e-08,
+          "frame0_max_dev_mm": 30.826305852419836
+        },
+        "middleres_Frontalis": {
+          "max_dev_mm": 35.9070586883876,
+          "max_dev_last_frame_mm": 35.907007735036544,
+          "kept_median_last": 0.0,
+          "kept_p05_last": 0.0,
+          "frame0_max_dev_mm": 35.9070586883876
+        },
+        "middleres_Jaw": {
+          "max_dev_mm": 5.820970619963132e-06,
+          "max_dev_last_frame_mm": 5.820970619963132e-06,
+          "kept_median_last": 0.9999999296204789,
+          "kept_p05_last": 0.9999998223842667,
+          "frame0_max_dev_mm": 5.820970619963132e-06
+        },
+        "middleres_LateralCartige": {
+          "max_dev_mm": 39.311279413931366,
+          "max_dev_last_frame_mm": 39.311279413931366,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -3.652511497698185e-08,
+          "frame0_max_dev_mm": 39.311211604941676
+        },
+        "middleres_LevatorLabiiSuperioris_l": {
+          "max_dev_mm": 39.504257629957465,
+          "max_dev_last_frame_mm": 39.504257629957465,
+          "kept_median_last": 7.651815236986437e-09,
+          "kept_p05_last": -2.985168084945755e-08,
+          "frame0_max_dev_mm": 39.45629267693095
+        },
+        "middleres_LevatorLabiiSuperioris_r": {
+          "max_dev_mm": 39.488535911874315,
+          "max_dev_last_frame_mm": 39.488535911874315,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -1.6218164555770187e-07,
+          "frame0_max_dev_mm": 39.45650620814108
+        },
+        "middleres_Mentalis": {
+          "max_dev_mm": 53.47609675366826,
+          "max_dev_last_frame_mm": 53.47609675366826,
+          "kept_median_last": 1.5972907940753345e-08,
+          "kept_p05_last": -1.1912454462859046e-07,
+          "frame0_max_dev_mm": 53.402974322218434
+        },
+        "middleres_NasalisTransverse": {
+          "max_dev_mm": 37.439988331379155,
+          "max_dev_last_frame_mm": 37.439988331379155,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -5.115441370495688e-08,
+          "frame0_max_dev_mm": 37.439963884267094
+        },
+        "middleres_NostrilWing": {
+          "max_dev_mm": 38.910145676082045,
+          "max_dev_last_frame_mm": 38.910145676082045,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -2.7681487346775664e-08,
+          "frame0_max_dev_mm": 38.9100111118572
+        },
+        "middleres_OrbicularisOculi_l": {
+          "max_dev_mm": 32.465704292558435,
+          "max_dev_last_frame_mm": 32.46489891917525,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -2.3865263099054342e-08,
+          "frame0_max_dev_mm": 32.465704292558435
+        },
+        "middleres_OrbicularisOculi_r": {
+          "max_dev_mm": 32.46568561749495,
+          "max_dev_last_frame_mm": 32.46512665158427,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -5.8390882762271444e-08,
+          "frame0_max_dev_mm": 32.46568561749495
+        },
+        "middleres_OrbicularisOris": {
+          "max_dev_mm": 46.64765536798641,
+          "max_dev_last_frame_mm": 46.64765536798641,
+          "kept_median_last": -1.9880840973485192e-08,
+          "kept_p05_last": -1.2175983585827054e-07,
+          "frame0_max_dev_mm": 46.617530339479124
+        },
+        "middleres_Procerus": {
+          "max_dev_mm": 35.09767926907311,
+          "max_dev_last_frame_mm": 35.08820760512507,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -2.6025718646849327e-08,
+          "frame0_max_dev_mm": 35.09767926907311
+        },
+        "middleres_TeethDown": {
+          "max_dev_mm": 3.373644436089855e-06,
+          "max_dev_last_frame_mm": 3.373644436089855e-06,
+          "kept_median_last": 0.999999968047586,
+          "kept_p05_last": 0.9999999331715607,
+          "frame0_max_dev_mm": 3.373644436089855e-06
+        },
+        "middleres_TeethUp": {
+          "max_dev_mm": 31.153959190397448,
+          "max_dev_last_frame_mm": 31.153959190397448,
+          "kept_median_last": 0.24663373608757366,
+          "kept_p05_last": 0.22563051542722665,
+          "frame0_max_dev_mm": 31.153959190397448
+        },
+        "middleres_Temporalis_l": {
+          "max_dev_mm": 35.201298461048,
+          "max_dev_last_frame_mm": 35.20115497160439,
+          "kept_median_last": 0.0,
+          "kept_p05_last": 0.0,
+          "frame0_max_dev_mm": 35.201298461048
+        },
+        "middleres_Temporalis_r": {
+          "max_dev_mm": 35.20126180746602,
+          "max_dev_last_frame_mm": 35.20111560711368,
+          "kept_median_last": 0.0,
+          "kept_p05_last": 0.0,
+          "frame0_max_dev_mm": 35.20126180746602
+        },
+        "middleres_ZygomaticusMajor_l": {
+          "max_dev_mm": 37.8838044192757,
+          "max_dev_last_frame_mm": 37.8838044192757,
+          "kept_median_last": -5.699380523083164e-09,
+          "kept_p05_last": -9.8348022892214e-08,
+          "frame0_max_dev_mm": 37.83033560295434
+        },
+        "middleres_ZygomaticusMajor_r": {
+          "max_dev_mm": 37.85490981879175,
+          "max_dev_last_frame_mm": 37.85490981879175,
+          "kept_median_last": 6.532599688968688e-08,
+          "kept_p05_last": -9.067732459344668e-08,
+          "frame0_max_dev_mm": 37.83067149661887
+        },
+        "middleres_ZygomaticusMinor_l": {
+          "max_dev_mm": 38.3858456763017,
+          "max_dev_last_frame_mm": 38.3858456763017,
+          "kept_median_last": 4.6857511593056955e-08,
+          "kept_p05_last": -5.50567776369526e-08,
+          "frame0_max_dev_mm": 38.3825376000999
+        },
+        "middleres_ZygomaticusMinor_r": {
+          "max_dev_mm": 38.40907856415213,
+          "max_dev_last_frame_mm": 38.40907856415213,
+          "kept_median_last": -2.9438145920934744e-08,
+          "kept_p05_last": -1.830892065735057e-07,
+          "frame0_max_dev_mm": 38.38240132030168
+        },
+        "middleres_skull": {
+          "max_dev_mm": 1.0896843423598344e-05,
+          "max_dev_last_frame_mm": 1.0896843423598344e-05,
+          "kept_median_last": 0.9999998947088993,
+          "kept_p05_last": 0.9999997602398393,
+          "frame0_max_dev_mm": 1.0896843423598344e-05
+        },
+        "polySurface1": {
+          "max_dev_mm": 41.443903855944484,
+          "max_dev_last_frame_mm": 41.443903855944484,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -1.1072042604975962e-07,
+          "frame0_max_dev_mm": 41.44386543252853
+        },
+        "polySurface10": {
+          "max_dev_mm": 42.65556012056196,
+          "max_dev_last_frame_mm": 42.65556012056196,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -9.92264554189326e-08,
+          "frame0_max_dev_mm": 42.65547222650622
+        },
+        "polySurface11": {
+          "max_dev_mm": 50.72185439953024,
+          "max_dev_last_frame_mm": 50.72185439953024,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -6.644639916064676e-08,
+          "frame0_max_dev_mm": 50.721832062921564
+        },
+        "polySurface12": {
+          "max_dev_mm": 50.720662539142516,
+          "max_dev_last_frame_mm": 50.720662539142516,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -8.185841166019614e-08,
+          "frame0_max_dev_mm": 50.72063616480533
+        },
+        "polySurface13": {
+          "max_dev_mm": 36.473948954393705,
+          "max_dev_last_frame_mm": 36.473948954393705,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -1.1216979532990834e-07,
+          "frame0_max_dev_mm": 36.473947038104754
+        },
+        "polySurface14": {
+          "max_dev_mm": 36.47413835423514,
+          "max_dev_last_frame_mm": 36.474137235854606,
+          "kept_median_last": -2.9608603346886753e-09,
+          "kept_p05_last": -5.219517910104443e-08,
+          "frame0_max_dev_mm": 36.47413835423514
+        },
+        "polySurface15": {
+          "max_dev_mm": 29.454370588093017,
+          "max_dev_last_frame_mm": 29.454370588093017,
+          "kept_median_last": 0.1873223316422543,
+          "kept_p05_last": 0.12500241797141476,
+          "frame0_max_dev_mm": 29.454370588093017
+        },
+        "polySurface16": {
+          "max_dev_mm": 29.454331145114384,
+          "max_dev_last_frame_mm": 29.454331145114384,
+          "kept_median_last": 0.18732250084817692,
+          "kept_p05_last": 0.12500248956529464,
+          "frame0_max_dev_mm": 29.454331145114384
+        },
+        "polySurface2": {
+          "max_dev_mm": 41.4435584486049,
+          "max_dev_last_frame_mm": 41.4435584486049,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -1.2358642567100728e-07,
+          "frame0_max_dev_mm": 41.44354286150703
+        },
+        "polySurface3": {
+          "max_dev_mm": 39.53706646185059,
+          "max_dev_last_frame_mm": 39.53706646185059,
+          "kept_median_last": 7.24535955676231e-08,
+          "kept_p05_last": 1.3920412361700941e-08,
+          "frame0_max_dev_mm": 39.512647703927016
+        },
+        "polySurface4": {
+          "max_dev_mm": 39.546251425876285,
+          "max_dev_last_frame_mm": 39.546251425876285,
+          "kept_median_last": -5.5183629554811375e-08,
+          "kept_p05_last": -1.0343721562611208e-07,
+          "frame0_max_dev_mm": 39.51283280004222
+        },
+        "polySurface5": {
+          "max_dev_mm": 40.58977859253216,
+          "max_dev_last_frame_mm": 40.58977859253216,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -8.900226204922035e-08,
+          "frame0_max_dev_mm": 40.58964681039548
+        },
+        "polySurface6": {
+          "max_dev_mm": 40.58972674442322,
+          "max_dev_last_frame_mm": 40.58972674442322,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -6.805221226535707e-08,
+          "frame0_max_dev_mm": 40.58958992883326
+        },
+        "polySurface7": {
+          "max_dev_mm": 38.0068026497427,
+          "max_dev_last_frame_mm": 38.0068026497427,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -5.165880517798982e-08,
+          "frame0_max_dev_mm": 38.006784646995364
+        },
+        "polySurface8": {
+          "max_dev_mm": 38.00675332709182,
+          "max_dev_last_frame_mm": 38.00675332709182,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -4.536221942519347e-08,
+          "frame0_max_dev_mm": 38.00673552648466
+        },
+        "polySurface9": {
+          "max_dev_mm": 42.65628632356623,
+          "max_dev_last_frame_mm": 42.65628632356623,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -9.723701835939735e-08,
+          "frame0_max_dev_mm": 42.65619620795362
+        },
+        "skin_cloth": {
+          "max_dev_mm": 52.16286563410991,
+          "max_dev_last_frame_mm": 52.16286563410991,
+          "kept_median_last": 0.0,
+          "kept_p05_last": -2.7942221092480676e-08,
+          "frame0_max_dev_mm": 52.16286563410991
+        },
+        "skin_cloth_copy_v5_pull_back": {
+          "max_dev_mm": 52.64074757242,
+          "max_dev_last_frame_mm": 52.64074757242,
+          "kept_median_last": -1.303821086651169e-07,
+          "kept_p05_last": -0.002792403774594687,
+          "frame0_max_dev_mm": 52.64069723507008
+        }
+      },
+      "kept_median_worst_body": -0.014257183564286513,
+      "max_dev_mm": 63.13784674290577,
+      "frame0_max_dev_mm": 63.13784674290577,
+      "pass": false
+    },
+    "pass": false
+  }
+}
