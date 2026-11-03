@@ -92,7 +92,8 @@ def outward_sign(verts, faces):
 
 def fit(src_verts, faces, lm_idx=None, lm_pts=None, lm_w=None, cloud=None, cloud_n=None,
         data_mask=None, data_w=None, reg_w=None, schedule=DEFAULT_SCHEDULE, iters_per_stage=3, beta=1.0,
-        max_dist=10.0, normal_cos=0.55, oriented=False, eps=1e-6, verbose=False):
+        max_dist=10.0, normal_cos=0.55, oriented=False, point_to_plane=False, max_tangent=None,
+        eps=1e-6, verbose=False):
     """-> (X (N,3), info dict). All inputs in mm, one frame.
 
     oriented=True: `cloud_n` must face outward (toward the camera) and the
@@ -142,10 +143,25 @@ def fit(src_verts, faces, lm_idx=None, lm_pts=None, lm_w=None, cloud=None, cloud
                     jj = np.where(ok, j, 0)
                     dots = (vn * cn[jj]).sum(axis=1)
                     ok &= (dots if oriented else np.abs(dots)) >= normal_cos
+                target = np.zeros((n, 3))
+                if point_to_plane and ok.any():
+                    # onto the scan's tangent plane at the matched point, not
+                    # onto the point, so vertices are not dragged sideways
+                    # (standard point-to-plane ICP; on the first capture it
+                    # measured about the same as point-to-point)
+                    off = cloud[j[ok]] - x[ok]
+                    along = (off * cn[j[ok]]).sum(axis=1)
+                    if max_tangent is not None:
+                        side = np.linalg.norm(off - along[:, None] * cn[j[ok]], axis=1)
+                        ok[np.flatnonzero(ok)[side > max_tangent]] = False
+                        along = along[side <= max_tangent]
+                    target[ok] = x[ok] + along[:, None] * cn[j[ok]]
+                else:
+                    target[ok] = cloud[j[ok]]
                 n_acc = int(ok.sum())
                 bw = beta * (np.ones(n) if data_w is None else np.asarray(data_w, dtype=np.float64))
                 d_data[ok] = bw[ok]
-                rhs_data[ok] = bw[ok][:, None] * cloud[j[ok]]
+                rhs_data[ok] = bw[ok][:, None] * target[ok]
             A = (alpha * LtL + sp.diags(d_lm + d_data + eps)).tocsc()
             solve = factorized(A)
             b = alpha * rhs_reg + rhs_lm + rhs_data + eps * x0
@@ -154,7 +170,7 @@ def fit(src_verts, faces, lm_idx=None, lm_pts=None, lm_w=None, cloud=None, cloud
             if len(lm_idx):
                 rec["lm_rms_mm"] = float(np.sqrt(np.mean(np.sum((x[lm_idx] - lm_pts) ** 2, axis=1))))
             if has_cloud and n_acc:
-                rec["data_rms_mm"] = float(np.sqrt(np.mean(np.sum((x[ok] - cloud[j[ok]]) ** 2, axis=1))))
+                rec["data_rms_mm"] = float(np.sqrt(np.mean(np.sum((x[ok] - target[ok]) ** 2, axis=1))))
             history.append(rec)
             if verbose:
                 print("   nonrigid", rec)

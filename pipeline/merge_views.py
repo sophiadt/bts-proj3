@@ -6,8 +6,12 @@ uniform scale comes from the primary (front) view. Turned views are then
 refined against the front's dense cloud by trimmed point-to-point ICP, since
 the subject cannot be trusted to hold still between shots.
 
-Landmark targets come from the primary view; slots it lacks (null or
-unreliable depth) are filled from turned views when both agree.
+Landmark targets come from the primary view only. Slots it lacks (null or
+unreliable depth, mostly the silhouette) stay empty; the turned views' dense
+depth covers those parts of the face instead. Filling them from turned views
+was tried on the first capture: most fills came from one view with nothing to
+check them against, they differed with which views were taken, and they
+dragged the cheek skin by up to 45 mm into a crease.
 """
 
 import numpy as np
@@ -18,7 +22,10 @@ from pipeline import nonrigid, rigid
 
 ICP_ITERS = 30
 ICP_TRIM_MM = 4.0
-FILL_AGREE_MM = 4.0
+FRONT_COVER_MM = 4.0       # turned-view points this close to the front view's are dropped
+BEND_OVERLAP_MM = 6.0      # a turned point this close to the front counts as overlap
+BEND_CENTRES = 400
+BEND_SMOOTHING = 50.0      # heavy: the bend follows the view's smooth drift, not its noise
 
 
 def icp(src, dst, iters=ICP_ITERS, trim_mm=ICP_TRIM_MM):
@@ -38,6 +45,31 @@ def icp(src, dst, iters=ICP_ITERS, trim_mm=ICP_TRIM_MM):
         R, t = dR @ R, dR @ t + dt
         rms, frac = float(np.sqrt(np.mean(d[ok] ** 2))), float(ok.mean())
     return R, t, rms, frac
+
+
+def bend_onto(pts, front, front_n, front_tree=None, seed=0):
+    """Smoothly bend a turned view's points onto the front view's surface.
+
+    At overlap points the offset to the front, along the front's normal, is
+    sampled; a heavily smoothed thin-plate field of it (affine away from the
+    overlap) moves every point. -> (points, info)"""
+    from scipy.interpolate import RBFInterpolator
+    tree = front_tree if front_tree is not None else cKDTree(front)
+    d, j = tree.query(pts)
+    ov = np.flatnonzero(d < BEND_OVERLAP_MM)
+    if len(ov) < 50:
+        return pts, {"n_overlap": int(len(ov)), "applied": False}
+    off = ((front[j[ov]] - pts[ov]) * front_n[j[ov]]).sum(axis=1)[:, None] * front_n[j[ov]]
+    rng = np.random.default_rng(seed)
+    pick = rng.choice(len(ov), min(BEND_CENTRES, len(ov)), replace=False)
+    field = RBFInterpolator(pts[ov[pick]], off[pick], kernel="thin_plate_spline",
+                            smoothing=BEND_SMOOTHING, degree=1)
+    shift = field(pts)
+    after, _ = tree.query(pts[ov] + shift[ov])
+    return pts + shift, {"n_overlap": int(len(ov)), "applied": True,
+                         "overlap_median_before_mm": float(np.median(d[ov])),
+                         "overlap_median_after_mm": float(np.median(after)),
+                         "shift_max_mm": float(np.linalg.norm(shift, axis=1).max())}
 
 
 def merge(views, fixture, template_skin, stride=2):
@@ -73,18 +105,28 @@ def merge(views, fixture, template_skin, stride=2):
 
     lm = lm_fit[prim.name].copy()
     valid = prim.valid.copy()
-    filled = []
-    for name, v in views.items():
-        if name == prim.name:
-            continue
-        cand = ~valid & v.valid
-        for i in np.flatnonzero(cand):
-            others = [lm_fit[o][i] for o, ov in views.items() if o != prim.name and ov.valid[i]]
-            if len(others) >= 2 and np.linalg.norm(others[0] - others[1]) > FILL_AGREE_MM:
-                continue
-            lm[i] = np.mean(others, axis=0)
-            valid[i] = True
-            filled.append(int(i))
+    # One surface, not two: where the front view already covers the face, the
+    # turned views' points are dropped. They agree with the front only to ~1.7
+    # mm, and the skin stepping between the two copies left a crease down the
+    # cheek where the front view's coverage ends.
+    # Rigid ICP leaves each turned view 1.75 mm (median) off the front, the
+    # same for both turns, and smoothly varying, so the kept points beyond the
+    # front's coverage started off a step from it. Each turned view is bent
+    # onto the front first: its offset along the front's normal is measured
+    # where the two overlap and spread smoothly over the whole view.
+    kp = labels.index(prim.name)
+    if len(clouds[kp]):
+        front_tree = cKDTree(clouds[kp])
+        front_n = nonrigid.orient_toward(clouds[kp], nonrigid.cloud_normals(clouds[kp]),
+                                         per[prim.name]["camera_centre"])
+        for k, name in enumerate(labels):
+            if k != kp and len(clouds[k]):
+                clouds[k], per[name]["bend"] = bend_onto(clouds[k], clouds[kp], front_n, front_tree)
+        for k in range(len(clouds)):
+            if k != kp and len(clouds[k]):
+                d, _ = front_tree.query(clouds[k])
+                per[labels[k]]["n_cloud_beyond_front"] = int((d > FRONT_COVER_MM).sum())
+                clouds[k] = clouds[k][d > FRONT_COVER_MM]
     cloud = np.concatenate(clouds) if clouds else np.zeros((0, 3))
     view_of = np.concatenate([np.full(len(c), k) for k, c in enumerate(clouds)]) if clouds else np.zeros(0, int)
     # Normals per view (a view's points only), each oriented toward its camera.
@@ -96,4 +138,4 @@ def merge(views, fixture, template_skin, stride=2):
                                                   per[name]["camera_centre"])
     return {"scale": per[prim.name]["scale"], "landmarks": lm, "valid": valid, "cloud": cloud,
             "cloud_normals": normals, "cloud_view": view_of, "view_names": labels, "per_view": per,
-            "filled": sorted(set(filled)), "primary": prim.name}
+            "primary": prim.name}

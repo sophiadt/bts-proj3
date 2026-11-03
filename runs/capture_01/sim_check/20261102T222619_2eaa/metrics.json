@@ -1,0 +1,400 @@
+{
+  "subject": "capture_01",
+  "pathway": "sim_check",
+  "script": "rig/sim_check.py",
+  "run_id": "20261102T222619_2eaa",
+  "status": "ok",
+  "error": null,
+  "traceback": null,
+  "started_at": "2026-11-02T22:26:19",
+  "wall_clock_s": 394.55,
+  "git": {
+    "sha": "f0c38ce104449eee7c586e44a06ad963f47b3ac9",
+    "dirty": false
+  },
+  "python": "3.9.7",
+  "packages": {
+    "numpy": "2.0.2",
+    "scipy": "1.13.1",
+    "trimesh": null
+  },
+  "metrics": {
+    "rest": {
+      "jack01_c_head01_high_geo_bone": {
+        "p99_mm": 0.00029048182827251057,
+        "max_mm": 94.66434840408293,
+        "settle_max_mm": 0.0
+      },
+      "jack01_MODEL1__jack01_c_loTeeth01_geo": {
+        "p99_mm": 0.00010279503119894202,
+        "max_mm": 0.00010427642514621969,
+        "settle_max_mm": 0.0
+      },
+      "jack01_MODEL1__jack01_c_tongue01_geo": {
+        "p99_mm": 9.60560622375488e-05,
+        "max_mm": 9.746957540668709e-05,
+        "settle_max_mm": 0.0
+      },
+      "middleres_AlarCartidge": {
+        "p99_mm": 2.333524881945475e-06,
+        "max_mm": 2.7292435478737447e-06,
+        "settle_max_mm": 0.07865766844741373
+      },
+      "middleres_Corrugator_l": {
+        "p99_mm": 4.708749665298549e-06,
+        "max_mm": 5.494438663109839e-06,
+        "settle_max_mm": 0.0938900493375514
+      },
+      "middleres_Corrugator_r": {
+        "p99_mm": 4.6867984842870855e-06,
+        "max_mm": 5.230690394334568e-06,
+        "settle_max_mm": 0.18127882507513218
+      },
+      "middleres_DepressorLabiiInferioris_l": {
+        "p99_mm": 5.438552781469366e-06,
+        "max_mm": 5.746036511443258e-06,
+        "settle_max_mm": 0.22946629108505578
+      },
+      "middleres_DepressorLabiiInferioris_r": {
+        "p99_mm": 5.420276063490584e-06,
+        "max_mm": 8.041979724602135e-06,
+        "settle_max_mm": 0.3295704619403936
+      },
+      "middleres_DepressorSeptiNasi": {
+        "p99_mm": 2.3254533530004147e-06,
+        "max_mm": 3.1995656883767733e-06,
+        "settle_max_mm": 0.000671506698795542
+      },
+      "middleres_DepressorSupercilii_l": {
+        "p99_mm": 4.612540619872035e-06,
+        "max_mm": 4.677803030511297e-06,
+        "settle_max_mm": 0.16769119015714598
+      },
+      "middleres_DepressorSupercilii_r": {
+        "p99_mm": 4.625880363504877e-06,
+        "max_mm": 4.731184115738646e-06,
+        "settle_max_mm": 0.1889444064238741
+      },
+      "middleres_Eyes_l_simple": {
+        "p99_mm": 2.441271272515882e-06,
+        "max_mm": 2.9291245634581062e-06,
+        "settle_max_mm": 0.9926125509942025
+      },
+      "middleres_Eyes_r_simple": {
+        "p99_mm": 2.3663687231671853e-06,
+        "max_mm": 2.4920272450168658e-06,
+        "settle_max_mm": 1.0055255532262934
+      },
+      "middleres_Frontalis": {
+        "p99_mm": 9.00573516841604e-06,
+        "max_mm": 9.829012728148929e-06,
+        "settle_max_mm": 0.022295996729627232
+      },
+      "middleres_Jaw": {
+        "p99_mm": 4.954617416081283e-06,
+        "max_mm": 6.119016947576961e-06,
+        "settle_max_mm": 0.0
+      },
+      "middleres_LateralCartige": {
+        "p99_mm": 2.3450515785522156e-06,
+        "max_mm": 4.653316095169513e-06,
+        "settle_max_mm": 0.0036572620046760856
+      },
+      "middleres_LevatorLabiiSuperioris_l": {
+        "p99_mm": 3.2499556904149477e-06,
+        "max_mm": 3.6137088883608287e-06,
+        "settle_max_mm": 0.8455718077365545
+      },
+      "middleres_LevatorLabiiSuperioris_r": {
+        "p99_mm": 3.0203737464826264e-06,
+        "max_mm": 3.6797260094838412e-06,
+        "settle_max_mm": 1.1334459803674808
+      },
+      "middleres_Mentalis": {
+        "p99_mm": 5.304967597700437e-06,
+        "max_mm": 8.165236821112316e-06,
+        "settle_max_mm": 0.44923605570830105
+      },
+      "middleres_NasalisTransverse": {
+        "p99_mm": 3.8871716606274125e-06,
+        "max_mm": 4.657345200861342e-06,
+        "settle_max_mm": 0.008031881360235044
+      },
+      "middleres_NostrilWing": {
+        "p99_mm": 2.3273362686135386e-06,
+        "max_mm": 2.5257346793587916e-06,
+        "settle_max_mm": 0.0025476731678367418
+      },
+      "middleres_OrbicularisOculi_l": {
+        "p99_mm": 4.767672970299816e-06,
+        "max_mm": 7.348829236829054e-06,
+        "settle_max_mm": 0.6872178485942309
+      },
+      "middleres_OrbicularisOculi_r": {
+        "p99_mm": 4.793890056409619e-06,
+        "max_mm": 6.701406809351371e-06,
+        "settle_max_mm": 0.5255392707398984
+      },
+      "middleres_OrbicularisOris": {
+        "p99_mm": 3.3437642296982904e-06,
+        "max_mm": 4.779344100471164e-06,
+        "settle_max_mm": 0.27937907201341056
+      },
+      "middleres_Procerus": {
+        "p99_mm": 4.61438759754673e-06,
+        "max_mm": 4.715129898754184e-06,
+        "settle_max_mm": 0.26908357146040535
+      },
+      "middleres_skull": {
+        "p99_mm": 9.47685659229999e-06,
+        "max_mm": 1.2970591170247757e-05,
+        "settle_max_mm": 0.0
+      },
+      "middleres_TeethDown": {
+        "p99_mm": 2.100464922333727e-06,
+        "max_mm": 3.727654275328102e-06,
+        "settle_max_mm": 0.0
+      },
+      "middleres_TeethUp": {
+        "p99_mm": 2.2461513583087165e-06,
+        "max_mm": 2.942392729517797e-06,
+        "settle_max_mm": 0.0
+      },
+      "middleres_Temporalis_l": {
+        "p99_mm": 7.75643823239048e-06,
+        "max_mm": 1.5289358081706907e-05,
+        "settle_max_mm": 0.05045572781137862
+      },
+      "middleres_Temporalis_r": {
+        "p99_mm": 8.357469071765513e-06,
+        "max_mm": 1.4889917507678458e-05,
+        "settle_max_mm": 0.052588837798347825
+      },
+      "middleres_ZygomaticusMajor_l": {
+        "p99_mm": 3.58098341905214e-06,
+        "max_mm": 6.672259000024096e-06,
+        "settle_max_mm": 4.606559754258892
+      },
+      "middleres_ZygomaticusMajor_r": {
+        "p99_mm": 3.4817416230091246e-06,
+        "max_mm": 7.327131935203087e-06,
+        "settle_max_mm": 4.995011422479854
+      },
+      "middleres_ZygomaticusMinor_l": {
+        "p99_mm": 3.176667848618487e-06,
+        "max_mm": 3.578812459272965e-06,
+        "settle_max_mm": 0.8957389557801773
+      },
+      "middleres_ZygomaticusMinor_r": {
+        "p99_mm": 3.312256100445637e-06,
+        "max_mm": 3.994382307836046e-06,
+        "settle_max_mm": 0.9347192146923454
+      },
+      "polySurface1": {
+        "p99_mm": 3.744635276821296e-06,
+        "max_mm": 4.588352687644592e-06,
+        "settle_max_mm": 0.04348450568687816
+      },
+      "polySurface10": {
+        "p99_mm": 4.928250817065035e-06,
+        "max_mm": 6.69923460225589e-06,
+        "settle_max_mm": 0.0076175435606861824
+      },
+      "polySurface11": {
+        "p99_mm": 5.753407822522875e-06,
+        "max_mm": 6.663060757589563e-06,
+        "settle_max_mm": 0.0054678735191270676
+      },
+      "polySurface12": {
+        "p99_mm": 5.1466975861246635e-06,
+        "max_mm": 7.019754817745987e-06,
+        "settle_max_mm": 0.004873388290964447
+      },
+      "polySurface13": {
+        "p99_mm": 4.215846160392053e-06,
+        "max_mm": 4.6694254090983955e-06,
+        "settle_max_mm": 0.017133068972470175
+      },
+      "polySurface14": {
+        "p99_mm": 4.211128492179761e-06,
+        "max_mm": 4.588156540223029e-06,
+        "settle_max_mm": 0.016520222871973408
+      },
+      "polySurface15": {
+        "p99_mm": 6.413168909721827e-06,
+        "max_mm": 7.346344647106588e-06,
+        "settle_max_mm": 0.0
+      },
+      "polySurface16": {
+        "p99_mm": 6.8263993204001685e-06,
+        "max_mm": 7.747089206593496e-06,
+        "settle_max_mm": 0.0
+      },
+      "polySurface2": {
+        "p99_mm": 3.873229058138738e-06,
+        "max_mm": 5.818346750093057e-06,
+        "settle_max_mm": 0.020810924737506672
+      },
+      "polySurface3": {
+        "p99_mm": 3.7491318764869802e-06,
+        "max_mm": 4.115401966384808e-06,
+        "settle_max_mm": 0.14895113108103217
+      },
+      "polySurface4": {
+        "p99_mm": 3.988539578789236e-06,
+        "max_mm": 5.139522567768182e-06,
+        "settle_max_mm": 0.11008234594379872
+      },
+      "polySurface5": {
+        "p99_mm": 5.390390561058836e-06,
+        "max_mm": 9.410407320871301e-06,
+        "settle_max_mm": 0.012681442142758025
+      },
+      "polySurface6": {
+        "p99_mm": 4.6132200958340605e-06,
+        "max_mm": 8.566320936147487e-06,
+        "settle_max_mm": 0.015366371437178084
+      },
+      "polySurface7": {
+        "p99_mm": 4.133581047279233e-06,
+        "max_mm": 5.52771039875814e-06,
+        "settle_max_mm": 0.00400840857731811
+      },
+      "polySurface8": {
+        "p99_mm": 4.041231782471155e-06,
+        "max_mm": 4.4670203855903476e-06,
+        "settle_max_mm": 0.006071575953454229
+      },
+      "polySurface9": {
+        "p99_mm": 4.979761998362069e-06,
+        "max_mm": 7.4643770904511405e-06,
+        "settle_max_mm": 0.009824069510927404
+      },
+      "skin_cloth": {
+        "p99_mm": 0.0003050821701356879,
+        "max_mm": 79.44359692391902,
+        "settle_max_mm": 0.00043630234106798577
+      },
+      "skin_cloth_copy_v5_pull_back": {
+        "p99_mm": 1.607382076864111e-05,
+        "max_mm": 2.5328615501415083e-05,
+        "settle_max_mm": 2.274217049605284
+      }
+    },
+    "rest_p99_worst": {
+      "body": "skin_cloth_copy_v5_pull_back",
+      "p99_mm": 1.607382076864111e-05,
+      "max_mm": 2.5328615501415083e-05,
+      "settle_max_mm": 2.274217049605284
+    },
+    "animated_finite": true,
+    "max_speed_mm_per_frame": {
+      "jack01_MODEL1__jack01_c_loTeeth01_geo": 0.0,
+      "jack01_MODEL1__jack01_c_tongue01_geo": 0.0,
+      "jack01_c_head01_high_geo_bone": 0.0,
+      "middleres_AlarCartidge": 0.06113876741287464,
+      "middleres_Corrugator_l": 0.0921625523717878,
+      "middleres_Corrugator_r": 0.1229896135217879,
+      "middleres_DepressorLabiiInferioris_l": 0.19723275977568006,
+      "middleres_DepressorLabiiInferioris_r": 0.2354516922890768,
+      "middleres_DepressorSeptiNasi": 0.000531520823781554,
+      "middleres_DepressorSupercilii_l": 0.09715866520510001,
+      "middleres_DepressorSupercilii_r": 0.09741882465790329,
+      "middleres_Eyes_l_simple": 0.5679835729926842,
+      "middleres_Eyes_r_simple": 0.5791173346304861,
+      "middleres_Frontalis": 0.016942196990462927,
+      "middleres_Jaw": 0.0,
+      "middleres_LateralCartige": 0.0028693710336134323,
+      "middleres_LevatorLabiiSuperioris_l": 0.4739052027095941,
+      "middleres_LevatorLabiiSuperioris_r": 0.5830264288968805,
+      "middleres_Mentalis": 0.30992136420773786,
+      "middleres_NasalisTransverse": 0.005825858974141217,
+      "middleres_NostrilWing": 0.00200475896492443,
+      "middleres_OrbicularisOculi_l": 0.4068409896450684,
+      "middleres_OrbicularisOculi_r": 0.32743335759953573,
+      "middleres_OrbicularisOris": 0.18909261149604956,
+      "middleres_Procerus": 0.13183092254053808,
+      "middleres_TeethDown": 0.0,
+      "middleres_TeethUp": 0.0,
+      "middleres_Temporalis_l": 0.02569040409291686,
+      "middleres_Temporalis_r": 0.032577372312141625,
+      "middleres_ZygomaticusMajor_l": 1.6390356814754645,
+      "middleres_ZygomaticusMajor_r": 1.5946712968493069,
+      "middleres_ZygomaticusMinor_l": 0.48267469015350484,
+      "middleres_ZygomaticusMinor_r": 0.49483160505308127,
+      "middleres_skull": 0.0,
+      "polySurface1": 0.02624063614438122,
+      "polySurface10": 0.006117804283394383,
+      "polySurface11": 0.004102650332121859,
+      "polySurface12": 0.0035874762321095807,
+      "polySurface13": 0.012024818681356752,
+      "polySurface14": 0.011720575204007676,
+      "polySurface15": 0.0,
+      "polySurface16": 0.0,
+      "polySurface2": 0.013278420621841956,
+      "polySurface3": 0.09669719739847667,
+      "polySurface4": 0.07877612732811855,
+      "polySurface5": 0.008398950436313158,
+      "polySurface6": 0.010995497963021773,
+      "polySurface7": 0.002836793603103256,
+      "polySurface8": 0.004579266366332083,
+      "polySurface9": 0.0065251544537214,
+      "skin_cloth": 0.00034355554220105163,
+      "skin_cloth_copy_v5_pull_back": 0.7524428838318364
+    },
+    "mesh_changed": {},
+    "mesh_identical_bodies": 52,
+    "speed_ratio_vs_template": {
+      "middleres_AlarCartidge": 0.6399055547809804,
+      "middleres_Corrugator_l": 1.2802220623952296,
+      "middleres_Corrugator_r": 1.5835147297463894,
+      "middleres_DepressorLabiiInferioris_l": 0.2641636400217294,
+      "middleres_DepressorLabiiInferioris_r": 0.2932492657919302,
+      "middleres_DepressorSeptiNasi": 0.6917883732913949,
+      "middleres_DepressorSupercilii_l": 0.17323334402096602,
+      "middleres_DepressorSupercilii_r": 0.2704002402828613,
+      "middleres_Eyes_l_simple": 0.40948648791523734,
+      "middleres_Eyes_r_simple": 0.4656285697986697,
+      "middleres_Frontalis": 0.530685963040395,
+      "middleres_Jaw": 0.0,
+      "middleres_LateralCartige": 0.2471539924987507,
+      "middleres_LevatorLabiiSuperioris_l": 0.44724978726877196,
+      "middleres_LevatorLabiiSuperioris_r": 0.5176917690075052,
+      "middleres_Mentalis": 0.5520820810351953,
+      "middleres_NasalisTransverse": 1.6366780567958632,
+      "middleres_NostrilWing": 0.4565644509585176,
+      "middleres_OrbicularisOculi_l": 0.4724450651000656,
+      "middleres_OrbicularisOculi_r": 0.3980793998964328,
+      "middleres_OrbicularisOris": 0.34985677548088656,
+      "middleres_Procerus": 0.3530163424030859,
+      "middleres_TeethDown": 0.0,
+      "middleres_TeethUp": 0.0,
+      "middleres_Temporalis_l": 1.0365176419388262,
+      "middleres_Temporalis_r": 1.313394784759087,
+      "middleres_ZygomaticusMajor_l": 0.6253789273223374,
+      "middleres_ZygomaticusMajor_r": 0.782894147115726,
+      "middleres_ZygomaticusMinor_l": 0.4025878381061557,
+      "middleres_ZygomaticusMinor_r": 0.4071577638184323,
+      "middleres_skull": 0.0,
+      "polySurface1": 0.25105811269113026,
+      "polySurface10": 1.0453100602467007,
+      "polySurface11": 0.8823795513593926,
+      "polySurface12": 0.7704226105233781,
+      "polySurface13": 0.9034300404047513,
+      "polySurface14": 0.8943257318933283,
+      "polySurface15": 0.0,
+      "polySurface16": 0.0,
+      "polySurface2": 0.07709771060738768,
+      "polySurface3": 0.3901909141318497,
+      "polySurface4": 0.24681038196123434,
+      "polySurface5": 0.4950994199389356,
+      "polySurface6": 0.6501256351710673,
+      "polySurface7": 0.7588949629185124,
+      "polySurface8": 1.2242770584256277,
+      "polySurface9": 1.1147738912056033,
+      "skin_cloth_copy_v5_pull_back": 0.262161441496131
+    },
+    "speed_ratio_over_max": {},
+    "pass": true
+  }
+}

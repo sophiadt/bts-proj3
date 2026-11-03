@@ -14,6 +14,12 @@ The template's subject-right eye is at +X and MediaPipe's RIGHT_EYE lists are
 the subject's right, so this holds only for correctly labelled captures (fit
 after the mirror check, with --relabel if it said LABELS_SWAPPED).
 
+The hole edges are not the visible margins (the lip lining wraps 7-9 mm into
+the mouth, the lids 4.5-5 mm toward the eye), so with `ref_skin` and the
+fixture each target is the contour point plus the template's own
+edge-behind-margin offset; without them the lining is pulled out (the first
+real fit hung its mouth open that way).
+
 Depth at an eyelid margin or the lip line is the least reliable on the face
 (lashes, the wet eye, the dark mouth), so each target keeps the landmark's
 position across the face and takes its depth from the smoothed scan where a
@@ -70,7 +76,7 @@ def template_edges(V, F):
     return out, x0
 
 
-def constraints(V, F, landmarks, valid, cloud=None, n=N_PER_EDGE):
+def constraints(V, F, landmarks, valid, cloud=None, n=N_PER_EDGE, ref_skin=None, fixture=None, only=None):
     """-> (vertex indices, target points (k,3)) pulling each opening's edges
     onto the person's contours, in the fit frame. Edges whose contour has
     missing landmarks are skipped."""
@@ -78,6 +84,8 @@ def constraints(V, F, landmarks, valid, cloud=None, n=N_PER_EDGE):
     tree = cKDTree(cloud) if cloud is not None and len(cloud) else None
     idx, tgt = [], []
     for name, (up_chain, lo_chain) in edges.items():
+        if only is not None and name not in only:
+            continue
         upper, lower, inner = CONTOURS[name]
         for chain, contour in ((up_chain, upper), (lo_chain, lower)):
             ids = list(contour)
@@ -93,9 +101,28 @@ def constraints(V, F, landmarks, valid, cloud=None, n=N_PER_EDGE):
                 d, j = tree.query(target)
                 near = d < SNAP_MM
                 target[near, 2] = cloud[j[near], 2]       # depth from the scan, position from MediaPipe
-            idx.extend(_resample_idx(V, chain, n))
+            edge = _resample_idx(V, chain, n)
+            if ref_skin is not None and fixture is not None:
+                # The hole edge is not the visible margin: the lip lining wraps
+                # 7-9 mm into the mouth, the lids 4.5-5 mm toward the eye. Keep the
+                # template's own edge-behind-margin offset (at subject scale), so
+                # the edge follows the person's outline without rolling out.
+                verts = [fixture["vertex"][i] for i in ids]
+                if any(v is None for v in verts):
+                    continue
+                margin = _resample(ref_skin[verts], n)
+                target = target + (ref_skin[edge] - margin)
+            idx.extend(edge)
             tgt.extend(target)
     return np.array(idx, dtype=np.int64), np.array(tgt, dtype=np.float64)
+
+
+def forward_shift(X0, X, idx):
+    """Mean movement (mm) of the hole edges toward the camera (-Z): the lip
+    lining rolling out shows as a large value."""
+    if not len(idx):
+        return None
+    return float(-(X[idx, 2] - X0[idx, 2]).mean())
 
 
 def alignment_error(X, idx, tgt):

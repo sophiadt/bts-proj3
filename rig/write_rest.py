@@ -199,7 +199,10 @@ def stamp_fit_info(src_dir):
     scale = None
     if rep.exists():
         with open(rep, encoding="utf-8") as fh:
-            scale = json.load(fh)["metrics"].get("scale")
+            m = json.load(fh)["metrics"]
+        # the motion was recorded on the lab head, so its scale is the one
+        # that counts, not the scale against a base start head
+        scale = m.get("scale_vs_lab_head", m.get("scale"))
     subject = Path(src_dir).name
     M.cmds.fileInfo("bts_subject", subject)
     if scale is not None:

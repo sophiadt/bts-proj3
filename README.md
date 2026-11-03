@@ -102,7 +102,10 @@ $MP rig/export_rest.py --update-registry    # lab head bodies and joints → tem
 $MP rig/roundtrip_test.py                   # proves the rig accepts and keeps a new shape
 $MP rig/ui_smoke_test.py capture_01         # after a first fit: also records the lab head speaking
 $MP pipeline/importance.py                  # where the skin needs more detail (from that speech motion)
+$MP pipeline/build_base.py                  # the human-proportioned start head → template_export/subjects/base_human/
 ```
+
+Every fit starts from `base_human` once it exists (the lab head fitted once to MediaPipe's average human face). `--lab-head` starts from the raw lab head instead. Rebuild the base after changing the fitting code.
 
 ## 3. Play it in the keyboard UI (Maya with the GUI)
 
@@ -158,10 +161,11 @@ A single photo writes `capture_<timestamp>/` with the same files. A recording wr
 # 🔬 How the fitting works
 
 1. **Left/right check.** Compares the landmarks' handedness with MediaPipe's canonical face, and uses the turned photos to see which side came toward the lens. It separates OK, swapped labels, a mirrored scan and depth read from the wrong pixels.
-2. **Align and size.** One rotation, position and uniform scale place the lab skin on about 270 landmark pairs (from `config/landmark_to_vertex.json`), weighted toward the nose, chin, forehead and jaw. The whole lab head (skin, muscles, bones, joints) is scaled together.
-3. **Reshape the skin.** The skin is pulled toward its landmarks and toward the depth points inside the face outline (hair, ears, neck and clothing are left out), while keeping its own shape. The eye and mouth openings are aligned to the person's eyelids and lips (their corners to the eye and mouth corners, their edges along MediaPipe's eyelid and inner-lip outlines). Where the face moves and creases most (lips, jaw, nose, eye corners: an importance map in the spirit of the lab's deformation-weighted Poisson-disk joint sampling) the skin is allowed more detail.
-4. **Move the inside.** Skull and jaw are placed so the lab head's skin-to-bone depth is kept under the fitted skin, where the camera saw the face. Muscle and fat follow a smooth field pinned at the skin and at the moved bones.
-5. **Write into Maya.** New rest shapes are written into a copy of the lab scene, wired so Ziva uses them; joints are moved and rebound. Checks: the scene shows the fitted face, every body's polygons and UVs match the lab head, and frames 0–50 (the tissue settling under gravity) run without blowing up. Speech is tested through the keyboard UI (`rig/ui_smoke_test.py`).
+2. **Start head.** The fit starts from `base_human`: the lab head already reshaped once to an average human face (the lab head itself is stylised, about 1.45× a real face with oversized eyes and a long, wide lower face). Same meshes and vertex order, so the rig still applies.
+3. **Join the photos and align.** The front photo's landmarks place the start head (one rotation, position and uniform scale on about 270 landmark pairs from `config/landmark_to_vertex.json`, weighted toward the nose, chin, forehead and jaw). Each turned photo is fitted onto the front's depth, bent smoothly where the two overlap so they join without a step, and adds only the skin the front did not see. Landmarks come from the front photo only.
+4. **Reshape the skin.** The skin is pulled toward its landmarks and onto the depth surface inside the face outline (hair, ears, neck and clothing are left out), while keeping its own shape. It follows the scan only to the scan's noise level (about 1 mm), so the noise is not copied in. The eye and mouth openings follow the person's eyelids and lips, keeping the lab head's own offset behind the visible lid and lip line (the skin's edge wraps a few mm inward there). Where the face moves and creases most (lips, jaw, nose, eye corners: an importance map in the spirit of the lab's deformation-weighted Poisson-disk joint sampling) the skin is allowed more detail. Skin no camera saw (the sides and back of the head) stays stiff and is held gently to the start head's shape.
+5. **Move the inside.** Skull, jaw and teeth move together as one (the capture is a closed, neutral mouth), placed so the lab head's skin-to-bone depth is kept under the fitted skin where the camera saw the face. The front teeth are kept behind the lips. The eyeballs are real size (24 mm), rigid, seated behind the fitted eye openings. Muscle and fat follow a smooth field pinned at the skin and at the moved bones.
+6. **Write into Maya.** New rest shapes are written into a copy of the lab scene, wired so Ziva uses them; joints are moved and rebound. Checks: the scene shows the fitted face, every body's polygons and UVs match the lab head, and frames 0–50 (the tissue settling under gravity) run without blowing up. Speech is tested through the keyboard UI (`rig/ui_smoke_test.py`).
 
 ---
 
@@ -172,21 +176,26 @@ A single photo writes `capture_<timestamp>/` with the same files. A recording wr
 | Landmarks with depth | 478/478 in each pose |
 | Left/right check | `LABELS_SWAPPED` (app mirroring; fitted with `--relabel`, OK after) |
 | Neutral-face check | OK: lips closed (0.3–0.6 mm), eyelids 7–11.5 mm, phone within 15° |
-| Size against the lab head | 71.6% |
-| Alignment error, before reshaping | 5.2 mm typical |
-| Skin to landmarks, after reshaping | 0.9 mm typical |
-| Skin to scan | 0.9 mm typical, 3.8 mm for 95% |
-| Folded skin triangles | 745 of 31,225 (mostly face edges and jaw sides) |
-| Skin-to-skull depth | 0.92× the lab head's |
+| Start head | `base_human` (the lab head reshaped to an average human face) |
+| Size against the lab head | 71.9% |
+| Alignment error, before reshaping | 5.4 mm typical |
+| Skin to landmarks, after reshaping | 1.1 mm typical |
+| Skin to scan | 0.85 mm typical, 3.6 mm for 95% |
+| Folded skin triangles | 340 of 31,225 (745 before the human start head and the fixes below) |
+| Eye and mouth openings | 0.5 mm off the person's eyelids and inner lips |
+| Mouth | closed (lips 3.2 mm apart at the midline); front teeth 8.3 mm behind the lips |
+| Eyeballs | 24 mm, behind the lids |
+| Skin-to-skull depth | 1.01× the lab head's |
 | In Maya | shows the fitted face exactly; polygons and UVs identical to the lab head in all 52 bodies; stable while the tissue settles (frames 0–50) |
-| Keyboard UI | plays "not even you" on the fitted head (motion scaled ×0.72): lips, chin and jaw move up to 21.6 mm, stable |
+| Keyboard UI | plays "not even you" on the fitted head (motion scaled ×0.72): lips, chin and jaw move up to 19.9 mm, stable |
 
 ---
 
 # ⚠️ Known issues
 
 - **Left/right labels were swapped by the app** (it mirrored the image MediaPipe sees). Fixed in `CameraManager.swift`; the fix still has to be built and checked on the iPhone (the red-dot test, then a new guided capture that the left/right check calls OK without `--relabel`).
-- **The lab head is stylised** (about 1.45× a real face, eyes 1.6–1.7×), so real faces need a strong reshape around the jaw and eyes, which is where the remaining folds are.
+- **The lab head is stylised** (about 1.45× a real face, eyes 1.6–1.7×). The human start head absorbs most of that, but the skin is still a little faceted: the phone's depth is about 1 mm noisy and coarse, and the fit follows it no closer than that.
+- **Tried and dropped:** a two-step fit (first a smooth warp from the landmarks alone, then the scan) folded the skin far more (3,500–5,000 folded triangles), because a 3D warp crosses the skin's inner wraps at the lips and eyes. Filling missing landmarks from the turned photos put a crease down a cheek: most fills came from one photo with nothing to check them against.
 - **Tissue depth comes from the lab head**, scaled to the person, not measured. A phone cannot see bone.
 - **Expressions** play from the lab head's recorded motion, sized to the person; they are not re-fitted to the new face.
 - **Results so far come from one person**; more subjects are still to be captured.

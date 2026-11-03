@@ -93,7 +93,70 @@ def bone_from_skin(skin0, skin1, faces, sample_idx, bone0, bone_faces, max_mm=40
                  "target_residual_median_mm": float(np.median(res[keep])),
                  "target_residual_p95_mm": float(np.percentile(res[keep], 95)),
                  "n_used": int(keep.sum())})
+    info["_pairs"] = (h0[keep], h1[keep])            # for a joint fit over several bones
     return (s, R, t), info
+
+
+def similarity_from_pairs(h0, h1):
+    """One similarity for several bones' depth targets together, with the same
+    robust pass as bone_from_skin. -> ((s, R, t), info)"""
+    s, R, t = similarity_transform(h0, h1)
+    res = np.linalg.norm(apply_similarity(h0, s, R, t) - h1, axis=1)
+    med = np.median(res)
+    keep = res <= max(med + 3.0 * 1.4826 * np.median(np.abs(res - med)), 2.0)
+    if keep.sum() >= 30 and not keep.all():
+        s, R, t = similarity_transform(h0[keep], h1[keep])
+        res = np.linalg.norm(apply_similarity(h0, s, R, t) - h1, axis=1)
+    return (s, R, t), {"extra_scale": float(s),
+                       "rot_deg": float(np.degrees(np.arccos(np.clip((np.trace(R) - 1) / 2, -1, 1)))),
+                       "target_residual_median_mm": float(np.median(res[keep])), "n_used": int(keep.sum())}
+
+
+EYEBALL_DIAMETER_MM = 24.0
+
+
+def place_eyeball(eye0, ring0, ring1, diameter=EYEBALL_DIAMETER_MM):
+    """A rigid eyeball of `diameter`, seated behind the fitted eye opening.
+
+    The template's eyeball is scaled about the centre of its own eye-opening
+    ring to `diameter`, then moved and turned with the ring (rigid fit of the
+    template ring onto the fitted one), so it keeps the template's
+    eyeball-behind-the-lids geometry at the new size. The lab head's eyeballs
+    are 34 mm across even at subject scale (stylised); a real adult eye is
+    about 24 mm. -> (new vertices, info)"""
+    from pipeline.rigid import rigid_transform
+    k = diameter / float(np.ptp(eye0, axis=0).max())
+    c0 = ring0.mean(axis=0)
+    R, t = rigid_transform(ring0 - c0, ring1 - ring1.mean(axis=0))
+    new = ring1.mean(axis=0) + (k * (eye0 - c0)) @ R.T
+    return new, {"diameter_mm": float(np.ptp(new, axis=0).max()), "resize": float(k),
+                 "ring_rot_deg": float(np.degrees(np.arccos(np.clip((np.trace(R) - 1) / 2, -1, 1))))}
+
+
+def keep_behind(verts, skin, faces, margin_mm=0.5, max_mm=30.0):
+    """Push a rigid body back (+Z, away from the camera) until none of it pokes
+    in front of the skin: a vertex is in front if, looking away from the
+    camera, the skin lies behind it. -> (verts, pushed mm)"""
+    dirs = np.tile([0.0, 0.0, 1.0], (len(verts), 1))
+    behind = geo.ray_hit_distance(verts, dirs, skin, faces, max_dist=max_mm)
+    poke = behind[np.isfinite(behind)]
+    if not len(poke):
+        return verts, 0.0
+    push = float(poke.max() + margin_mm)
+    return verts + np.array([0.0, 0.0, push]), push
+
+
+def clearance_along_view(front_pts, skin, faces, max_mm=40.0, poke_mm=15.0):
+    """Signed distance (mm) from each point to the skin along the view: positive
+    when the skin is in front of it (toward the camera, -Z), negative when the
+    point has come through and the skin lies behind it; inf if neither."""
+    ahead = geo.ray_hit_distance(front_pts, np.tile([0.0, 0.0, -1.0], (len(front_pts), 1)), skin, faces,
+                                 max_dist=max_mm)
+    # Only a point with no skin in front has come through; looking back, a
+    # tooth that is still inside can meet the mouth lining before the lip.
+    behind = geo.ray_hit_distance(front_pts, np.tile([0.0, 0.0, 1.0], (len(front_pts), 1)), skin, faces,
+                                  max_dist=poke_mm)
+    return np.where(np.isfinite(ahead), ahead, np.where(np.isfinite(behind), -behind, np.inf))
 
 
 def eval_field(field, pts, chunk=20000):

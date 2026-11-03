@@ -56,6 +56,24 @@ def draw(ax, P, F, view, rgb=SKIN_RGB, values=None, vmax=None, cmap="viridis"):
     ax.set_ylim(xy[:, 1].min() - 5, xy[:, 1].max() + 5)
 
 
+def draw_parts(ax, parts, view):
+    """Several meshes depth-sorted together, so whatever sits in front shows."""
+    polys, cols, depths = [], [], []
+    light = np.array([-0.3, 0.4, -1.0]) if view == "front" else np.array([1.0, 0.4, -0.3])
+    light = light / np.linalg.norm(light)
+    for P, F, rgb in parts:
+        xy, depth = project(P, view)
+        shade = 0.35 + 0.65 * np.abs(geo.face_normals(P, F) @ light)
+        polys.append(xy[F]); depths.append(depth[F].mean(axis=1))
+        cols.append(np.clip(np.tile(rgb, (len(F), 1)) * shade[:, None], 0, 1))
+    polys, cols, depths = np.concatenate(polys), np.concatenate(cols), np.concatenate(depths)
+    order = np.argsort(-depths)
+    ax.add_collection(PolyCollection(polys[order], facecolors=cols[order], edgecolors="none", antialiased=False))
+    allxy = polys.reshape(-1, 2)
+    ax.set_xlim(allxy[:, 0].min() - 5, allxy[:, 0].max() + 5); ax.set_ylim(allxy[:, 1].min() - 5, allxy[:, 1].max() + 5)
+    ax.set_aspect("equal"); ax.axis("off")
+
+
 def share_limits(axes):
     lo_x = min(a.get_xlim()[0] for a in axes); hi_x = max(a.get_xlim()[1] for a in axes)
     lo_y = min(a.get_ylim()[0] for a in axes); hi_y = max(a.get_ylim()[1] for a in axes)
@@ -84,7 +102,12 @@ def render(subject, out=None):
     out.mkdir(parents=True, exist_ok=True)
     rep = json.load(open(sub / "report.json"))["metrics"]
     s = rep["scale"]
-    V, F, _ = fx.load_skin()
+    _V, F, _ = fx.load_skin()
+    # The head the fit started from (the human base head, or the lab head), at subject scale.
+    from pipeline import fit_subject as fs
+    start_name = rep.get("start_head", "lab head")
+    start_bodies = (fs.load_base_bodies(start_name) if start_name != "lab head" else fs.load_template_bodies())[0]
+    V = start_bodies[fx.SKIN]["out"]
     fit = np.load(sub / "skin_fit_output.npz")
     X, cloud = fit["vertices"], fit["cloud"]
     written = []
@@ -99,7 +122,7 @@ def render(subject, out=None):
         axes[row, 1].set_aspect("equal"); axes[row, 1].axis("off")
         draw(axes[row, 2], X, F, view)
         share_limits(axes[row])
-    for col, t in enumerate(["Lab head, original size", "Phone scan (face only)",
+    for col, t in enumerate(["Start head ({0}), original size".format(start_name), "Phone scan (face only)",
                              "Lab skin fitted ({0:.1f}% size)".format(100 * s)]):
         axes[0, col].set_title(t, fontsize=13)
     plt.tight_layout(); plt.savefig(out / "fit_compare.png", dpi=80, facecolor=BG); plt.close()
@@ -114,7 +137,7 @@ def render(subject, out=None):
     d = np.linalg.norm(X - s * V, axis=1)
     vm = float(np.percentile(d, 99))
     draw(axes[1], X, F, "front", values=d, vmax=vm)
-    axes[1].set_title("Reshaping after the uniform shrink (0 to {0:.0f} mm)".format(vm), fontsize=12)
+    axes[1].set_title("Reshaping after the uniform scale (0 to {0:.0f} mm)".format(vm), fontsize=12)
     fl = geo.flipped_faces(s * V, X, F, min_area_ratio=0.05)
     draw(axes[2], X, F, "front")
     xy, _ = project(X[F[fl]].mean(axis=1), "front")
@@ -131,7 +154,7 @@ def render(subject, out=None):
             continue
         zb = np.load(tpl / (key + ".npz"))
         Fb = zb["faces"].reshape(-1, 3)
-        before = s * (zb["vertices"][0] if key == fx.SKIN else zb["rest_vertices"])
+        before = s * (start_bodies[key]["out"] if key == fx.SKIN else start_bodies[key]["rest"])
         after = X if key == fx.SKIN else np.load(sub / (key + ".npz"))["rest_vertices"]
         lw = 2.2 if key == fx.SKIN else 1.4
         ax.add_collection(LineCollection(section(before, Fb), colors=COLOUR[info["role"]], linewidths=lw * 0.7,
@@ -141,13 +164,28 @@ def render(subject, out=None):
     ax.legend(handles=[Line2D([], [], color=COLOUR["cloth"], lw=2.2, label="skin"),
                        Line2D([], [], color=COLOUR["tissue"], lw=1.4, label="muscle and fat"),
                        Line2D([], [], color=COLOUR["bone"], lw=1.4, label="skull, jaw, teeth"),
-                       Line2D([], [], color="#555", lw=1, ls=(0, (3, 2)), label="before fit (lab head, shrunk)"),
+                       Line2D([], [], color="#555", lw=1, ls=(0, (3, 2)), label="before fit (start head, scaled)"),
                        Line2D([], [], color="#555", lw=1.6, label="after fit")],
               loc="lower left", frameon=False, fontsize=11)
     plt.tight_layout(); plt.savefig(out / "inside.png", dpi=80, facecolor=BG); plt.close()
     written.append("inside.png")
 
-    # 4. animations (if simulated): the fitted skin, and how far it has moved
+    # 4. skin, eyeballs and teeth together, as Maya shows them: anything poking
+    # through the skin (eyeballs, teeth) shows in front of it
+    parts = [(X, F, SKIN_RGB)]
+    for key, rgb in (("middleres_Eyes_l_simple", (0.93, 0.93, 0.9)), ("middleres_Eyes_r_simple", (0.93, 0.93, 0.9)),
+                     ("middleres_TeethUp", (0.95, 0.92, 0.82)), ("middleres_TeethDown", (0.95, 0.92, 0.82))):
+        if (sub / (key + ".npz")).exists():
+            z = np.load(sub / (key + ".npz"))
+            parts.append((z["rest_vertices"], z["faces"].reshape(-1, 3), np.array(rgb)))
+    fig, axes = plt.subplots(1, 2, figsize=(14, 8), facecolor=BG)
+    for ax, view in zip(axes, ("front", "side")):
+        draw_parts(ax, parts, view)
+    axes[0].set_title("Skin, eyeballs and teeth together", fontsize=12)
+    plt.tight_layout(); plt.savefig(out / "parts.png", dpi=80, facecolor=BG); plt.close()
+    written.append("parts.png")
+
+    # 5. animations (if simulated): the fitted skin, and how far it has moved
     for name, label in (("anim_fit", "Lab scene frames 0-50: the tissue settling (no speech)"),
                         ("anim_ui_fit", '"not even you" from the keyboard UI')):
         f = sub / (name + ".npz")

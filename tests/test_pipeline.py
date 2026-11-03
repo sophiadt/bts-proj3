@@ -324,6 +324,67 @@ def test_bone_warp_stays_rigid_shaped():
     np.testing.assert_allclose(new, apply_similarity(bone, s, R, t))
 
 
+def _sheet(n=31, step=1.0, z=0.0):
+    """A flat triangulated sheet in the XY plane, facing the camera (-Z)."""
+    g = np.stack(np.meshgrid(np.arange(n) * step, np.arange(n) * step), -1).reshape(-1, 2)
+    v = np.c_[g, np.full(len(g), z)] - [(n - 1) * step / 2, (n - 1) * step / 2, 0]
+    i = np.arange(n * n).reshape(n, n)
+    a, b, c, d = i[:-1, :-1].ravel(), i[:-1, 1:].ravel(), i[1:, :-1].ravel(), i[1:, 1:].ravel()
+    return v, np.r_[np.c_[a, c, b], np.c_[b, c, d]]
+
+
+def test_point_to_plane_does_not_drag_skin_sideways():
+    # A thin strip of scan 2 mm in front of a sheet: the sheet's vertices move
+    # only along the scan's normal, never sideways onto the strip.
+    v, f = _sheet()
+    strip = np.stack(np.meshgrid(np.arange(-15, 15.1, 0.5), np.arange(4, 6.1, 0.5)), -1).reshape(-1, 2)
+    cloud = np.c_[strip, np.full(len(strip), -2.0)]
+    n = np.tile([0.0, 0.0, -1.0], (len(cloud), 1))
+    kw = dict(cloud=cloud, cloud_n=n, schedule=(10.0,), max_dist=6.0, normal_cos=0.0)
+    pl, _ = nonrigid.fit(v, f, point_to_plane=True, max_tangent=3.0, **kw)
+    side = lambda x: np.linalg.norm((x - v)[:, :2], axis=1).max()
+    assert side(pl) < 0.2
+    on = (np.abs(v[:, 0]) < 12) & (v[:, 1] > 4.5) & (v[:, 1] < 5.5)
+    assert np.abs(pl[on, 2] + 2.0).max() < 0.5             # still reaches the strip
+
+
+def test_bend_onto_joins_a_drifted_view_to_the_front():
+    from pipeline import merge_views
+    v, _ = _sheet(61, 1.0)
+    front = v[v[:, 0] < 10]
+    turned = v[v[:, 0] > -10].copy()
+    turned[:, 2] += 1.5 + 0.03 * turned[:, 1]                # a smooth drift off the front
+    n = np.tile([0.0, 0.0, -1.0], (len(front), 1))
+    out, info = merge_views.bend_onto(turned, front, n)
+    assert info["applied"] and info["overlap_median_after_mm"] < 0.2
+    beyond = out[:, 0] > 20                                  # past the overlap it moves with it
+    assert np.abs(out[beyond, 2]).max() < 0.5
+
+
+def test_clearance_is_signed():
+    v, f = _sheet()
+    pts = np.array([[0.3, 0.2, 3.0], [0.3, 0.2, -2.0], [40, 40, 3.0]])   # behind, through, off the sheet
+    c = volumetric.clearance_along_view(pts, v, f)
+    np.testing.assert_allclose(c[:2], [3.0, -2.0], atol=1e-6)
+    assert np.isinf(c[2])
+
+
+def test_eyeball_is_rigid_at_24_mm_and_kept_behind_the_lids():
+    rng = np.random.default_rng(6)
+    d = rng.normal(size=(400, 3))
+    eye0 = 17.0 * d / np.linalg.norm(d, axis=1, keepdims=True)          # 34 mm, like the lab head
+    ring0 = np.c_[12 * np.cos(np.linspace(0, 6.28, 40)), 6 * np.sin(np.linspace(0, 6.28, 40)), np.full(40, -14.0)]
+    ring1 = ring0 * 0.9 + [1.0, -2.0, 0.5]
+    new, info = volumetric.place_eyeball(eye0, ring0, ring1)
+    assert abs(info["diameter_mm"] - volumetric.EYEBALL_DIAMETER_MM) < 1e-6
+    pd = lambda x: np.linalg.norm(x[:50, None] - x[None, :50], axis=2)
+    np.testing.assert_allclose(pd(new), pd(eye0) * info["resize"], atol=1e-9)
+    # a lid sheet just in front of the eyeball's apex: pushed back behind it
+    v, f = _sheet(61, 1.0, z=new[:, 2].min() + 2.0)
+    out, push = volumetric.keep_behind(new, v, f)
+    assert push > 2.0 and out[:, 2].min() >= v[0, 2] + 0.4
+
+
 def test_flipped_faces_detects_inversion():
     v = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]], dtype=float)
     f = np.array([[0, 1, 2]])

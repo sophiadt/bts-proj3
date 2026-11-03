@@ -25,8 +25,17 @@ Facts the brief did not have:
 - **Capture-side robustness learned on the real capture:** keep only depth inside the face-oval outline (a hoodie and hair pulled the jaw skin up to 55 mm); smooth the scan (`denoise_cloud`, k=32) and end the skin fit at stiffness 20 (folds 2,449 → 745). Silhouette landmarks and the chin can carry wrong depth (chin read 80 mm behind the nose); they're filtered.
 - **Openings are aligned, not just masked** (professor's direction, Nov 2026). The scan's closest points stay masked within 3 mm of a hole, as the brief says. But each eye and mouth hole is split at its corners, and its upper and lower edges are pulled onto MediaPipe's eyelid and inner-lip contours (`pipeline/holes.py`), with depth taken from the smoothed scan. On the first capture this took the openings from 4.6 mm to about 0.1 mm off the real eyelids and lips.
 - **Importance, after the lab's joint placement** (`pipeline/importance.py`, deformation-weighted adaptive Poisson-disk sampling as in `b98-sampling-joint/d2-possion-sampling.py`). Importance = the lab head's speech motion from frame 14, plus normal curvature (creases), plus the density of the 1,200 UI joints. It sets the skin fit's stiffness, ÷(1 + 4·importance): the lips then match the scan 0.85 mm instead of 0.91. Extra scan weight on the Poisson-disk anchors measured no gain, so it's behind `--anchors`. Rebuild with `pipeline/importance.py` after `rig/ui_smoke_test.py` has saved `template_export/anim_ui_generic.npz`.
+- **Start head `base_human`** (`pipeline/build_base.py`): the lab head fitted once to MediaPipe's canonical face (synthetic guided capture, base mode: lips, lip data and mouth hole left out). Every fit starts from it unless `--lab-head`; per-person scale lands near 1.04 instead of 0.69. Its lips drift open to 9.1 mm (lab head 7.2); holding them stiffer changed nothing, and the person's fit closes them (3.2 mm).
+- **Fit fixes measured on the first capture:**
+  - *Openings keep the lab head's wrap.* The hole edges sit 7–9 mm (lips) and 4.5–5 mm (lids) behind the visible margin; targets are contour + that offset. Pulling the edges straight onto the contours had opened the mouth and shredded the lids.
+  - *Overfitting noise* looked crumpled: stiffness 200, scan pull 0.3 (matches ~0.85 mm, the depth's noise level).
+  - *Eyeballs* are rigid, 24 mm, moved with the eye-ring fit, then pushed behind the skin (`keep_behind`). The lab head's are 34 mm even at subject scale.
+  - *Skull, jaw and both teeth share one similarity* (separate fits turned the jaw 9–10°). A guard keeps the front teeth at least half the start head's clearance behind the lips (signed: a tooth through the lip counts negative).
+  - *No landmark fill from turned views.* Most fills came from one view, unchecked; the set changed with the views taken, and swung the unseen side of the head up to 45 mm into a crease down the cheek. Turned views give dense depth only, after a smooth bend onto the front where they overlap (1.75 → 1.3 mm).
+  - *Unseen skin is tethered* (weight 0.2) to the start shape: without it the back of the head moved 14 mm with the choice of views.
+  - *Tried and rejected:* two-step fit (thin-plate warp from landmarks, then scan: ~5,000 folds; landmark-only surface step: 3,500+), a grazing-angle filter on turned views (folds 498 → 686), point-to-plane matching (kept; no measurable change).
 - **Keyboard UI** lives in the lab's repo (`C:\Users\zpa18\a3-stochastic-V1\…\h99-UI-mayascipt-V1_comsciV1.py`); don't edit it. `rig/keyboard_ui.py` runs it on a fitted head from an in-memory copy:
-  - phoneme displacements scaled by the fit (jaw rotation [900:903] not scaled);
+  - phoneme displacements scaled by the fit's scale against the lab head (`scale_vs_lab_head`, not the scale against `base_human`; jaw rotation [900:903] not scaled);
   - feedback control's neutral swapped for the fitted frame-14 joints;
   - reset reopens the fitted `_ui.mb`;
   - its writes go to `template_export/ui_results`.
@@ -55,6 +64,7 @@ $MP rig/sim_check.py template_export/scenes/NAME.mb --subject template_export/su
 $MP tools/render_fit.py NAME            # pictures + animation GIFs -> template_export/subjects/NAME/views
 $MP rig/ui_smoke_test.py NAME           # keyboard UI plays "not even you" on the fitted head (runs the lab's code)
 $MP pipeline/importance.py              # once, after the first UI test: skin importance map + Poisson-disk anchors
+$MP pipeline/build_base.py              # once (and after fit changes): base_human, the start head of every fit
 # Maya GUI: exec(open(r"C:\Users\syd3\bts-proj3\rig\keyboard_ui_fitted.py").read())
 PYTHONPATH=".pytest-lib;." $MP -m pytest tests/test_pipeline.py   # pytest via pip --target; mayapy untouched
 ```
