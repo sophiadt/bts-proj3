@@ -126,7 +126,8 @@ Units are millimeters unless stated. Z is the distance from the camera.
 
 ```
 bts-proj3/
-├── Project 3 - TrueDepth Camera Data/
+├── TrueDepth App/                                  # the iPhone app: open the .xcodeproj in Xcode
+│   ├── Project 3 - TrueDepth Camera Data.xcodeproj
 │   └── Project 3 - TrueDepth Camera Data/
 │       ├── CameraManager.swift   # capture, MediaPipe, depth fusion, saving
 │       ├── ContentView.swift     # camera UI, mesh overlay, shutter

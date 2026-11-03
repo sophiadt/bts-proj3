@@ -117,6 +117,15 @@ struct ContentView: View {
         HStack(spacing: 28) {
             modeLabel("PHOTO", selected: !recordMode) { recordMode = false }
             modeLabel("RECORD", selected: recordMode) { recordMode = true }
+            if recordMode {
+                Button { camera.saveRaw.toggle() } label: {
+                    Text(camera.saveRaw ? "RAW: ON" : "RAW: OFF")
+                        .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                        .foregroundColor(camera.saveRaw ? Color.green : Color.gray)
+                }
+                .buttonStyle(.plain)
+                .disabled(camera.isRecording)
+            }
         }
     }
 
@@ -236,6 +245,13 @@ struct MeshOverlay: View {
                 let p = pt(i)
                 context.fill(Path(ellipseIn: CGRect(x: p.x - 2.5, y: p.y - 2.5, width: 5, height: 5)),
                              with: .color(.red))
+            }
+            // DEBUG: landmark 33 = outer corner of the person's OWN right eye (left/right label test)
+            if valid[33] {
+                let p = pt(33)
+                let dot = CGRect(x: p.x - 9, y: p.y - 9, width: 18, height: 18)
+                context.fill(Path(ellipseIn: dot), with: .color(.red))
+                context.stroke(Path(ellipseIn: dot), with: .color(.white), lineWidth: 2)
             }
         }
         .allowsHitTesting(false)

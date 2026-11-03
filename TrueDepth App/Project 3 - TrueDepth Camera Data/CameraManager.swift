@@ -24,9 +24,22 @@ final class CameraManager: NSObject, ObservableObject, AVCaptureDataOutputSynchr
     private var recStart: Double = 0
     private var lastTimestampMs = -1
     private var recMisses = 0
-    private var recFrames: [(t: Double, pts: [SIMD3<Float>?])] = []
+    private var recFrames: [(t: Double, pts: [SIMD3<Float>?], bs: [Float], raw: Int?)] = []
     private var recIntrinsics: Intrinsics?
     private let ciContext = CIContext()
+    // raw RGB + depth saving while recording (all of these are only touched on visionQueue)
+    private var recDir: URL?
+    private var recRaw = false
+    private var recBlendNames: [String] = []
+    private var recMeta: [String: Any] = [:]
+    private var rawSeen = 0
+    private var rawSaved = 0
+    private var rawDropped = 0
+    private var rawPending = 0
+    private let rawEvery = 2                 // save every 2nd processed frame
+    private let rawQueue = DispatchQueue(label: "raw.queue", qos: .utility)
+    private let rawCI = CIContext()
+    private var wantRaw = false
 
     @Published var status = "Starting..."
     @Published var saveMessage = ""
@@ -39,6 +52,7 @@ final class CameraManager: NSObject, ObservableObject, AVCaptureDataOutputSynchr
     @Published var faceStatus = "NO FACE"
     @Published var faceOK = false
     @Published var showRGB = false { didSet { wantRGB = showRGB } }
+    @Published var saveRaw = false { didSet { wantRaw = saveRaw } }
     lazy var meshEdges: [(Int, Int)] = FaceLandmarker.tesselationConnections().map { (Int($0.start), Int($0.end)) }
     @Published var depthImage: UIImage?
     @Published var savedFiles: [URL] = []
@@ -79,11 +93,13 @@ final class CameraManager: NSObject, ObservableObject, AVCaptureDataOutputSynchr
             options.baseOptions.modelAssetPath = path
             options.runningMode = .image
             options.numFaces = 1
+            options.outputFaceBlendshapes = true
             landmarker = try FaceLandmarker(options: options)
             let vopts = FaceLandmarkerOptions()
             vopts.baseOptions.modelAssetPath = path
             vopts.runningMode = .video
             vopts.numFaces = 1
+            vopts.outputFaceBlendshapes = true
             videoLandmarker = try FaceLandmarker(options: vopts)
         } catch {
             DispatchQueue.main.async { self.saveMessage = "MediaPipe failed to load: \(error.localizedDescription)" }
@@ -252,6 +268,41 @@ final class CameraManager: NSObject, ObservableObject, AVCaptureDataOutputSynchr
         return nil
     }
 
+    // The 52 blendshape scores MediaPipe returns with the landmarks (names + scores, same order)
+    private func blendshapes(_ result: FaceLandmarkerResult) -> (names: [String], scores: [Float])? {
+        guard let cats = result.faceBlendshapes.first?.categories, !cats.isEmpty else { return nil }
+        return (cats.map { $0.categoryName ?? "" }, cats.map { $0.score })
+    }
+
+    // Distance between the pupils in mm. Used to check the depth scale (adults are roughly 54-74 mm).
+    // Falls back to the midpoints of the eye corners if the iris points have no depth.
+    private func pupilDistance(_ pts: [SIMD3<Float>?]) -> (mm: Float, source: String)? {
+        guard pts.count > 473 else { return nil }
+        if let a = pts[468], let b = pts[473] { return (simd_distance(a, b), "iris") }
+        if let a1 = pts[33], let a2 = pts[133], let b1 = pts[362], let b2 = pts[263] {
+            return (simd_distance((a1 + a2) / 2, (b1 + b2) / 2), "eye corners (approx)")
+        }
+        return nil
+    }
+
+    // Lens distortion data from the camera calibration (saved only, never applied)
+    private func lensMeta(_ cal: AVCameraCalibrationData?) -> [String: Any] {
+        guard let cal = cal else { return [:] }
+        func floats(_ d: Data?) -> [Double] {
+            guard let d = d else { return [] }
+            return d.withUnsafeBytes { raw in
+                Array(raw.bindMemory(to: Float32.self)).map { Double($0) }
+            }
+        }
+        return [
+            "lens_distortion_center_x": Double(cal.lensDistortionCenter.x),
+            "lens_distortion_center_y": Double(cal.lensDistortionCenter.y),
+            "lens_distortion_lookup": floats(cal.lensDistortionLookupTable),
+            "lens_distortion_inverse_lookup": floats(cal.inverseLensDistortionLookupTable),
+            "pixel_size_mm": Double(cal.pixelSize)
+        ]
+    }
+
     // Transposes the sensor-native frame so the face is upright for MediaPipe.
     // maxSide shrinks the result (landmarks are normalized, so size does not matter).
     private func uprightBuffer(from pb: CVPixelBuffer, maxSide: CGFloat? = nil) -> CVPixelBuffer? {
@@ -276,19 +327,20 @@ final class CameraManager: NSObject, ObservableObject, AVCaptureDataOutputSynchr
     }
 
     private func landmarks3D(pixelBuffer pb: CVPixelBuffer, depth: [Float], dw: Int, dh: Int,
-                             k: Intrinsics) throws -> [SIMD3<Float>?] {
+                             k: Intrinsics) throws -> (pts: [SIMD3<Float>?], blend: (names: [String], scores: [Float])?) {
         guard let landmarker = landmarker else { throw FuseError.notLoaded }
         guard let upright = uprightBuffer(from: pb) else { throw FuseError.noFace }
         let image = try MPImage(pixelBuffer: upright)
         let result = try landmarker.detect(image: image)
         guard let lms = result.faceLandmarks.first else { throw FuseError.noFace }
-        return lms.map { lm -> SIMD3<Float>? in
+        let points = lms.map { lm -> SIMD3<Float>? in
             // The upright image is a transpose, so its x and y axes are swapped
             // relative to the depth map: depth column = lm.y, depth row = lm.x
             let u = lm.y * Float(dw), v = lm.x * Float(dh)
             guard let z = sampleDepth(depth, dw, dh, u, v) else { return nil }
             return SIMD3<Float>((u - k.cx) * z / k.fx, (v - k.cy) * z / k.fy, z) * 1000
         }
+        return (points, blendshapes(result))
     }
     
     // All depth pixels inside a box around the landmarks (mm), like clean_face.py
@@ -351,16 +403,22 @@ final class CameraManager: NSObject, ObservableObject, AVCaptureDataOutputSynchr
         // MediaPipe + fusion
         let k = scaledIntrinsics(depth.cameraCalibrationData, depthWidth: w)
         var pts: [SIMD3<Float>?] = []
+        var blend: (names: [String], scores: [Float])?
         var report: String
         if let k = k {
             do {
-                pts = try landmarks3D(pixelBuffer: pb, depth: arr, dw: w, dh: h, k: k)
+                let fused = try landmarks3D(pixelBuffer: pb, depth: arr, dw: w, dh: h, k: k)
+                pts = fused.pts
+                blend = fused.blend
                 let valid = pts.compactMap { $0 }
                 report = "\(valid.count)/\(pts.count) with depth"
                 if pts.count > 263 {
                     if let nose = pts[1] { report += String(format: " | nose %.0f mm", nose.z) }
                     if let a = pts[33], let b = pts[263] {
                         report += String(format: " | eyes %.1f mm", simd_distance(a, b))
+                    }
+                    if let p = pupilDistance(pts) {
+                        report += String(format: " | pupils %.1f mm", p.mm)
                     }
                 }
             } catch {
@@ -402,6 +460,16 @@ final class CameraManager: NSObject, ObservableObject, AVCaptureDataOutputSynchr
             meta["cx"] = Double(m.columns.2.x); meta["cy"] = Double(m.columns.2.y)
             meta["intrinsics_ref_width"] = Double(d.width)
             meta["intrinsics_ref_height"] = Double(d.height)
+            meta.merge(lensMeta(cal)) { a, _ in a }
+        }
+        if let p = pupilDistance(pts) {
+            meta["pupil_distance_mm"] = Double(p.mm)
+            meta["pupil_source"] = p.source
+        }
+        if let b = blend {
+            var dict: [String: Double] = [:]
+            for (n, sc) in zip(b.names, b.scores) { dict[n] = Double(sc) }
+            meta["blendshapes"] = dict
         }
         let metaURL = dir.appendingPathComponent("\(prefix)meta.json")
         try JSONSerialization.data(withJSONObject: meta, options: .prettyPrinted).write(to: metaURL)
@@ -491,10 +559,12 @@ final class CameraManager: NSObject, ObservableObject, AVCaptureDataOutputSynchr
         lastTimestampMs = ms
 
         var lms: [NormalizedLandmark] = []
+        var bs: (names: [String], scores: [Float])?
         if let image = try? MPImage(pixelBuffer: small),
            let result = try? vl.detect(videoFrame: image, timestampInMilliseconds: ms),
            let first = result.faceLandmarks.first {
             lms = first
+            bs = blendshapes(result)
         }
         let norm = lms.map { CGPoint(x: CGFloat($0.x), y: CGFloat($0.y)) }
 
@@ -504,8 +574,11 @@ final class CameraManager: NSObject, ObservableObject, AVCaptureDataOutputSynchr
         var inFrame = true
         var valid: [Bool] = []
         var kUsed: Intrinsics?
+        var depthArr: [Float] = []
+        var dW = 0, dH = 0
         if !lms.isEmpty {
             let (arr, w, h) = depthArray(depth.depthDataMap)
+            depthArr = arr; dW = w; dH = h
             kUsed = scaledIntrinsics(depth.cameraCalibrationData, depthWidth: w)
             for lm in lms {
                 let inside = lm.x >= 0 && lm.x <= 1 && lm.y >= 0 && lm.y <= 1
@@ -527,8 +600,35 @@ final class CameraManager: NSObject, ObservableObject, AVCaptureDataOutputSynchr
             if lms.isEmpty {
                 recMisses += 1
             } else {
-                if recFrames.isEmpty { recStart = time; recIntrinsics = kUsed }
-                recFrames.append((time - recStart, pts))
+                if recFrames.isEmpty {
+                    recStart = time
+                    recIntrinsics = kUsed
+                    var m: [String: Any] = [
+                        "depth_width": dW, "depth_height": dH,
+                        "rgb_width": CVPixelBufferGetWidth(pb), "rgb_height": CVPixelBufferGetHeight(pb),
+                        "depth_filtered": depth.isDepthDataFiltered
+                    ]
+                    if let cal = depth.cameraCalibrationData {
+                        let im = cal.intrinsicMatrix
+                        let d = cal.intrinsicMatrixReferenceDimensions
+                        m["fx"] = Double(im.columns.0.x); m["fy"] = Double(im.columns.1.y)
+                        m["cx"] = Double(im.columns.2.x); m["cy"] = Double(im.columns.2.y)
+                        m["intrinsics_ref_width"] = Double(d.width)
+                        m["intrinsics_ref_height"] = Double(d.height)
+                        m.merge(lensMeta(cal)) { a, _ in a }
+                    }
+                    recMeta = m
+                }
+                if recBlendNames.isEmpty, let b = bs { recBlendNames = b.names }
+                var rawIndex: Int?
+                if recRaw, let dir = recDir {
+                    rawSeen += 1
+                    if rawSeen % rawEvery == 0 {
+                        rawIndex = queueRawFrame(dir: dir.appendingPathComponent("raw"),
+                                                 depth: depthArr, w: dW, h: dH, pb: pb)
+                    }
+                }
+                recFrames.append((time - recStart, pts, bs?.scores ?? [], rawIndex))
             }
             recCount = recFrames.count
         }
@@ -562,6 +662,39 @@ final class CameraManager: NSObject, ObservableObject, AVCaptureDataOutputSynchr
         }
     }
 
+    // Saves one raw RGB + depth frame in the background. Returns its index, or nil if skipped (writer busy).
+    // Call only on `visionQueue`.
+    private func queueRawFrame(dir: URL, depth: [Float], w: Int, h: Int, pb: CVPixelBuffer) -> Int? {
+        if rawPending >= 3 { rawDropped += 1; return nil }
+        rawPending += 1
+        let index = rawSaved
+        rawSaved += 1
+        rawQueue.async {
+            let name = String(format: "frame_%05d", index)
+            let ci = CIImage(cvPixelBuffer: pb)
+            if let cg = self.rawCI.createCGImage(ci, from: ci.extent),
+               let jpg = UIImage(cgImage: cg).jpegData(compressionQuality: 0.9) {
+                try? jpg.write(to: dir.appendingPathComponent("\(name)_rgb.jpg"))
+            }
+            let data = depth.withUnsafeBufferPointer { Data(buffer: $0) }
+            try? data.write(to: dir.appendingPathComponent("\(name)_depth_\(w)x\(h)_float32_m.bin"))
+            self.visionQueue.async { self.rawPending -= 1 }
+        }
+        return index
+    }
+
+    // Zips a folder (so hundreds of raw frames can be shared as one file)
+    private func zipFolder(_ dir: URL) -> URL? {
+        var result: URL?
+        var error: NSError?
+        NSFileCoordinator().coordinate(readingItemAt: dir, options: [.forUploading], error: &error) { zipped in
+            let dest = dir.deletingLastPathComponent().appendingPathComponent(dir.lastPathComponent + ".zip")
+            try? FileManager.default.removeItem(at: dest)
+            if (try? FileManager.default.copyItem(at: zipped, to: dest)) != nil { result = dest }
+        }
+        return result
+    }
+
     func startRecording() {
         guard !isRecording, !isCapturing else { return }
         isRecording = true
@@ -570,6 +703,14 @@ final class CameraManager: NSObject, ObservableObject, AVCaptureDataOutputSynchr
         visionQueue.async {
             self.recFrames = []
             self.recMisses = 0
+            self.recBlendNames = []
+            self.recMeta = [:]
+            self.rawSeen = 0; self.rawSaved = 0; self.rawDropped = 0; self.rawPending = 0
+            self.recRaw = self.wantRaw
+            let dir = self.newSessionDir("recording")
+            self.recDir = dir
+            let rawDir = dir.appendingPathComponent("raw")
+            try? FileManager.default.createDirectory(at: self.recRaw ? rawDir : dir, withIntermediateDirectories: true)
             self.recording = true
         }
     }
@@ -578,8 +719,11 @@ final class CameraManager: NSObject, ObservableObject, AVCaptureDataOutputSynchr
         guard isRecording else { return }
         visionQueue.async {
             self.recording = false
+            self.rawQueue.sync { }                 // wait until every queued raw frame is written
             let frames = self.recFrames, misses = self.recMisses, k = self.recIntrinsics
-            let dir = self.newSessionDir("recording")
+            let dir = self.recDir ?? self.newSessionDir("recording")
+            let usedRaw = self.recRaw
+            let savedRaw = self.rawSaved, droppedRaw = self.rawDropped
             var message: String
             var files: [URL] = []
             do {
@@ -590,10 +734,14 @@ final class CameraManager: NSObject, ObservableObject, AVCaptureDataOutputSynchr
                         if let p = p { return [r2(p.x), r2(p.y), r2(p.z)] }
                         return NSNull()
                     }
-                    return ["t": (f.t * 1000).rounded() / 1000, "pts": pts] as [String: Any]
+                    var entry: [String: Any] = ["t": (f.t * 1000).rounded() / 1000, "pts": pts]
+                    if !f.bs.isEmpty { entry["bs"] = f.bs.map { (Double($0) * 1000).rounded() / 1000 } }
+                    if let r = f.raw { entry["raw"] = r }
+                    return entry
                 }
                 var root: [String: Any] = ["units": "mm", "frame_count": frames.count,
                                            "frames_without_face": misses, "frames": frameJSON]
+                if !self.recBlendNames.isEmpty { root["blendshape_names"] = self.recBlendNames }
                 if let k = k {
                     root["fx"] = Double(k.fx); root["fy"] = Double(k.fy)
                     root["cx"] = Double(k.cx); root["cy"] = Double(k.cy)
@@ -601,10 +749,38 @@ final class CameraManager: NSObject, ObservableObject, AVCaptureDataOutputSynchr
                 let url = dir.appendingPathComponent("landmarks_sequence_mm.json")
                 try JSONSerialization.data(withJSONObject: root, options: []).write(to: url)
                 files = [url]
+
+                // camera numbers, lens distortion and pupil distance (depth-scale check)
+                var meta = self.recMeta
+                meta["raw_frames_saved"] = savedRaw
+                meta["raw_frames_dropped"] = droppedRaw
+                meta["raw_every_nth_frame"] = self.rawEvery
+                let ipds = frames.compactMap { self.pupilDistance($0.pts) }
+                let irisIPDs = ipds.filter { $0.source == "iris" }.map { $0.mm }.sorted()
+                let anyIPDs = ipds.map { $0.mm }.sorted()
+                var pupilNote = ""
+                if !irisIPDs.isEmpty {
+                    meta["pupil_distance_mm_median"] = Double(irisIPDs[irisIPDs.count / 2])
+                    meta["pupil_source"] = "iris"
+                    pupilNote = String(format: " | pupils %.1f mm", irisIPDs[irisIPDs.count / 2])
+                } else if !anyIPDs.isEmpty {
+                    meta["pupil_distance_mm_median"] = Double(anyIPDs[anyIPDs.count / 2])
+                    meta["pupil_source"] = "eye corners (approx)"
+                    pupilNote = String(format: " | pupils ~%.1f mm", anyIPDs[anyIPDs.count / 2])
+                }
+                let metaURL = dir.appendingPathComponent("recording_meta.json")
+                try JSONSerialization.data(withJSONObject: meta, options: .prettyPrinted).write(to: metaURL)
+                files.append(metaURL)
+
+                var rawNote = ""
+                if usedRaw {
+                    if let zip = self.zipFolder(dir) { files.insert(zip, at: 0) }
+                    rawNote = "\nRaw frames: \(savedRaw) saved, \(droppedRaw) skipped (writer busy)"
+                }
                 let secs = frames.last?.t ?? 0
-                message = String(format: "Saved %d frames over %.1f s (%.0f fps), %d without a face\n%@",
+                message = String(format: "Saved %d frames over %.1f s (%.0f fps), %d without a face%@%@\n%@",
                                  frames.count, secs, secs > 0 ? Double(frames.count) / secs : 0,
-                                 misses, dir.lastPathComponent)
+                                 misses, pupilNote, rawNote, dir.lastPathComponent)
             } catch {
                 message = "Save failed: \(error.localizedDescription)"
             }

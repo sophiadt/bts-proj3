@@ -37,7 +37,7 @@ SCENE_MD5 = "b174b0d59a89495c6f57f779b8063b27"
 TEMPLATE_EXPORT_DIR = REPO_ROOT / "template_export"
 
 # MediaPipe's own bundle: the canonical face mesh lives inside it.
-MEDIAPIPE_TASK = REPO_ROOT / "Project 3 - TrueDepth Camera Data" / "face_landmarker.task"
+MEDIAPIPE_TASK = REPO_ROOT / "TrueDepth App" / "Project 3 - TrueDepth Camera Data" / "face_landmarker.task"
 MEDIAPIPE_CANONICAL_NPZ = REPO_ROOT / "config" / "mediapipe_canonical.npz"
 LANDMARK_TO_VERTEX_JSON = REPO_ROOT / "config" / "landmark_to_vertex.json"
 
