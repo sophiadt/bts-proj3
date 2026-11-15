@@ -1,0 +1,53 @@
+{
+  "format": 1,
+  "capture_id": "s01_20261110T212937Z_burst",
+  "subject": "s01",
+  "mode": "burst",
+  "created_utc": "2026-11-10T21:29:37Z",
+  "created_from": "earliest meta.json timestamp",
+  "views": [
+    "front",
+    "left",
+    "right"
+  ],
+  "depth_frames_merged": 16,
+  "labels": "unchecked",
+  "mirror_check": null,
+  "notes": "First capture with burst depth (16 frames per pose, per-pixel median) from the partner's app build with the mirror fix. extras/ holds the partner's Maya prototype outputs (registration.json, landmarks_on_model.json) and its viewport screenshots; see experimental/partner_scan_to_maya/.",
+  "app": "unknown (no capture.json from the app)",
+  "files": [
+    "front_depth_640x480_float32_m.bin",
+    "front_face_crop.ply",
+    "front_landmarks.ply",
+    "front_landmarks_3d_mm.json",
+    "front_meta.json",
+    "front_rgb.jpg",
+    "front_rgb_upright.jpg",
+    "left_depth_640x480_float32_m.bin",
+    "left_face_crop.ply",
+    "left_landmarks.ply",
+    "left_landmarks_3d_mm.json",
+    "left_meta.json",
+    "left_rgb.jpg",
+    "left_rgb_upright.jpg",
+    "right_depth_640x480_float32_m.bin",
+    "right_face_crop.ply",
+    "right_landmarks.ply",
+    "right_landmarks_3d_mm.json",
+    "right_meta.json",
+    "right_rgb.jpg",
+    "right_rgb_upright.jpg"
+  ],
+  "extras": [
+    "extras/Screenshot_2026-11-10_at_2.37.00PM.png",
+    "extras/Screenshot_2026-11-10_at_2.37.04PM.png",
+    "extras/Screenshot_2026-11-10_at_2.37.11PM.png",
+    "extras/landmarks_on_model.json",
+    "extras/registration.json"
+  ],
+  "ingested": {
+    "utc": "2026-11-15T01:04:01Z",
+    "source": "Burst Mode Captures",
+    "tool": "tools/ingest_capture.py"
+  }
+}

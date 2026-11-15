@@ -1,0 +1,44 @@
+{
+  "format": 1,
+  "capture_id": "s01_20261030T170049Z_guided",
+  "subject": "s01",
+  "mode": "guided",
+  "created_utc": "2026-10-30T17:00:49Z",
+  "created_from": "earliest meta.json timestamp",
+  "views": [
+    "front",
+    "left",
+    "right"
+  ],
+  "depth_frames_merged": 1,
+  "labels": "swapped",
+  "mirror_check": null,
+  "notes": "First real capture (2026-10-30), app built before the mirror fix (eed36d1): MediaPipe left/right labels mirrored, so fit with relabelling. Fitted on the Ziva workstation as subject capture_01.",
+  "app": "unknown (no capture.json from the app)",
+  "files": [
+    "front_depth_640x480_float32_m.bin",
+    "front_face_crop.ply",
+    "front_landmarks.ply",
+    "front_landmarks_3d_mm.json",
+    "front_meta.json",
+    "front_rgb.jpg",
+    "left_depth_640x480_float32_m.bin",
+    "left_face_crop.ply",
+    "left_landmarks.ply",
+    "left_landmarks_3d_mm.json",
+    "left_meta.json",
+    "left_rgb.jpg",
+    "right_depth_640x480_float32_m.bin",
+    "right_face_crop.ply",
+    "right_landmarks.ply",
+    "right_landmarks_3d_mm.json",
+    "right_meta.json",
+    "right_rgb.jpg"
+  ],
+  "extras": [],
+  "ingested": {
+    "utc": "2026-11-15T01:04:00Z",
+    "source": "Capture Data",
+    "tool": "tools/ingest_capture.py"
+  }
+}
