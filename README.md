@@ -15,8 +15,8 @@ This research project runs from September 2026 to Present. This repository will 
 ```
 iPhone app (TrueDepth App/)            front, left and right photos: colour, raw depth,
         │                              478 MediaPipe landmarks in 3D (mm)
-        ▼  AirDrop / Share
-Capture folder (Capture Data/)
+        ▼  AirDrop: one <capture_id>.zip per session
+captures/<subject>/<capture_id>/       filed by tools/ingest_capture.py, committed
         │
         ▼  Ziva workstation, mayapy
 Fitting pipeline (pipeline/)           left/right check → align and size the lab head →
@@ -43,10 +43,14 @@ bts-proj3/
 │       ├── CameraManager.swift          capture, MediaPipe, depth lookup, saving
 │       ├── ContentView.swift            camera UI, mesh overlay, landmark-33 red dot
 │       └── face_landmarker.task         MediaPipe model (also read by the pipeline)
-├── Capture Data/                        a guided capture: Front/, Left/, Right/
+├── captures/                            phone captures: <subject>/<capture_id>/ (see captures/README.md)
 ├── pipeline/                            fitting (plain Python, runs in mayapy)
 ├── rig/                                 everything that opens Maya: export, write, checks, UI launcher
-├── tools/render_fit.py                  pictures and animation GIFs of a fit
+├── tools/
+│   ├── ingest_capture.py                files AirDropped captures into captures/ (standard library only)
+│   ├── compare_depth_noise.py           depth roughness per pose (single frame vs burst)
+│   └── render_fit.py                    pictures and animation GIFs of a fit
+├── experimental/partner_scan_to_maya/   the app author's first Maya prototype (superseded, kept for reference)
 ├── core/, checks/                       shared geometry, IO and template measurements
 ├── config/                              landmark map, MediaPipe canonical face, template registry
 ├── tests/                               pytest
@@ -68,9 +72,14 @@ Generated files go to `template_export/` and `runs/`; both are git-ignored apart
 
 1. Open `TrueDepth App/Project 3 - TrueDepth Camera Data.xcodeproj`.
 2. In *Signing & Capabilities*, pick your team, select the iPhone, press **Run** (⌘R), allow camera access.
-3. Tap **guided capture** (bottom left). The app takes a front, left and right photo, each after a 4-second countdown.
-4. When it says `Saved face_<timestamp>`, tap **Share** and AirDrop the files to the Mac.
-5. Put the 18 files (or the three `Front/`, `Left/`, `Right/` folders) in `Capture Data/` (or any folder) and copy it to the Ziva workstation.
+3. Type the subject's anonymous code (`s01`, `s02`, ...) in the **SUBJECT** field. Never a name.
+4. Tap **guided capture** (bottom left). The app takes a front, left and right photo, each after a 4-second countdown, with 16 depth frames merged per photo.
+5. When it says `Saved s02_<UTC time>_burst.zip`, tap **Share** and AirDrop it to the laptop: one zip per session.
+6. File it and commit it, as in [`captures/README.md`](captures/README.md):
+   ```bash
+   python3 tools/ingest_capture.py --from ~/Downloads     # or drop the zip in captures/_inbox/ and run without --from
+   git add captures/s02 && git commit -m "Add capture <capture_id>" && git push
+   ```
 
 ## 2. Build the asset (Ziva workstation)
 
@@ -79,21 +88,25 @@ Run in a terminal from the repo root, **one Maya job at a time** (the Ziva batch
 ```bash
 MP="C:/Program Files/Autodesk/Maya2023/bin/mayapy.exe"
 
-$MP pipeline/mirror_check.py "Capture Data"                       # 1. left/right check: read the verdict
-$MP pipeline/fit_subject.py "Capture Data" --id capture_01        # 2. fit (add --relabel only if step 1 said LABELS_SWAPPED)
-$MP rig/write_rest.py template_export/subjects/capture_01 --save capture_01 --ui-ready   # 3. write into Maya
-$MP rig/sim_check.py template_export/scenes/capture_01.mb --subject template_export/subjects/capture_01   # 4. check it simulates
-$MP tools/render_fit.py capture_01                                # 5. pictures and GIFs
+ID=s01_20261110T212937Z_burst                                     # a capture id from captures/
+
+$MP pipeline/mirror_check.py $ID --record    # 1. left/right check: read the verdict; --record stores it in capture.json
+$MP pipeline/fit_subject.py $ID              # 2. fit (relabels on its own if capture.json says labels: swapped)
+$MP rig/write_rest.py template_export/subjects/$ID --save $ID --ui-ready   # 3. write into Maya
+$MP rig/sim_check.py template_export/scenes/$ID.mb --subject template_export/subjects/$ID   # 4. check it simulates
+$MP tools/render_fit.py $ID                  # 5. pictures and GIFs
 ```
+
+The subject output name defaults to the capture id (`--id` overrides it). The first fit, made before captures had ids, is `capture_01` (from `s01_20261030T170049Z_guided`).
 
 You get:
 
 | Where | What |
 |---|---|
-| `template_export/scenes/capture_01.mb` | the fitted head in the lab rig, with the lab scene's own keys (frames 0–50: the tissue settling, no speech) |
-| `template_export/scenes/capture_01_ui.mb` | the same head with the baked keys after frame 14 removed, for the keyboard UI |
-| `template_export/subjects/capture_01/report.json` | every number from the fit: residuals, folds, skin-to-skull depth, neutral-face check |
-| `template_export/subjects/capture_01/views/` | before/after pictures, the cut through the head, animation GIFs |
+| `template_export/scenes/<id>.mb` | the fitted head in the lab rig, with the lab scene's own keys (frames 0–50: the tissue settling, no speech) |
+| `template_export/scenes/<id>_ui.mb` | the same head with the baked keys after frame 14 removed, for the keyboard UI |
+| `template_export/subjects/<id>/report.json` | every number from the fit: residuals, folds, skin-to-skull depth, neutral-face check |
+| `template_export/subjects/<id>/views/` | before/after pictures, the cut through the head, animation GIFs |
 
 The first time on a new machine, set up the template once (each takes a few minutes):
 
@@ -143,7 +156,13 @@ The fit never uses MediaPipe's blendshape scores. They are saved in `meta.json` 
 
 # 📊 Capture files
 
-Guided capture writes six files per pose (`front_`, `left_`, `right_`), 18 in all:
+Each capture lives in `captures/<subject>/<capture_id>/`, where the capture id is `<subject>_<UTC YYYYMMDD>T<HHMMSS>Z_<mode>` (mode `guided`, `burst`, `photo` or `record`). The app names the session folder and its zip the same way. Next to the app's files are:
+- `capture.json`: subject, mode, time, app build, and the reviewed left/right verdict (`labels: ok / swapped / unchecked`);
+- `extras/`: anything the app didn't write, such as screenshots or other tools' outputs.
+
+The layout, the naming rules and the steps from phone to repo are in [`captures/README.md`](captures/README.md).
+
+Guided capture writes seven files per pose (`front_`, `left_`, `right_`), 21 in all:
 
 | File | Contents |
 |---|---|
@@ -154,7 +173,7 @@ Guided capture writes six files per pose (`front_`, `left_`, `right_`), 18 in al
 | `<pose>_landmarks_3d_mm.json` | 478 points `[x, y, z]` in mm, `null` where depth is missing; each index keeps its slot |
 | `<pose>_landmarks.ply`, `<pose>_face_crop.ply` | For viewing only (nulls dropped, so indices shift) |
 
-A single photo writes `capture_<timestamp>/` with the same files. A recording writes `recording_<timestamp>/` with `landmarks_sequence_mm.json`, `recording_meta.json`, and with RAW on a `raw/` folder and its `.zip`.
+A single photo (`..._photo`) writes the same files without a prefix. A recording (`..._record`) writes `landmarks_sequence_mm.json`, `recording_meta.json` and, with RAW on, a `raw/` folder. Every session ends with `capture.json` and is shared as one `<capture_id>.zip`. The fitting pipeline reads guided and burst captures; it cannot read recordings yet.
 
 ---
 
@@ -169,7 +188,7 @@ A single photo writes `capture_<timestamp>/` with the same files. A recording wr
 
 ---
 
-# 📈 First real capture (`Capture Data/`, November 2026)
+# 📈 First real capture (`captures/s01/s01_20261030T170049Z_guided/`, fitted as `capture_01`)
 
 | Measure | Result |
 |---|---|
@@ -189,11 +208,17 @@ A single photo writes `capture_<timestamp>/` with the same files. A recording wr
 | In Maya | shows the fitted face exactly; polygons and UVs identical to the lab head in all 52 bodies; stable while the tissue settles (frames 0–50) |
 | Keyboard UI | plays "not even you" on the fitted head (motion scaled ×0.72): lips, chin and jaw move up to 19.9 mm, stable |
 
+**Second capture, same subject (`captures/s01/s01_20261110T212937Z_burst/`).** This was the first capture taken with the mirror fix and burst depth:
+- The left/right check is **OK** without `--relabel`, so the fix works on the phone.
+- 16 depth frames merged per pose lowered the face's depth roughness from 1.43 to 1.12 mm, and halved the flying pixels (0.58% → 0.28%), by `tools/compare_depth_noise.py`.
+
+It has not been fitted yet.
+
 ---
 
 # ⚠️ Known issues
 
-- **Left/right labels were swapped by the app** (it mirrored the image MediaPipe sees). Fixed in `CameraManager.swift`; the fix still has to be built and checked on the iPhone (the red-dot test, then a new guided capture that the left/right check calls OK without `--relabel`).
+- **Left/right labels were swapped by the first app build** (it mirrored the image MediaPipe sees). Fixed in `CameraManager.swift` and verified: the burst capture of 2026-11-10 passes the left/right check without `--relabel`. The first capture keeps `labels: swapped` in its `capture.json`, and `fit_subject.py` relabels it on its own.
 - **The lab head is stylised** (about 1.45× a real face, eyes 1.6–1.7×). The human start head absorbs most of that, but the skin is still a little faceted: the phone's depth is about 1 mm noisy and coarse, and the fit follows it no closer than that.
 - **Tried and dropped:** a two-step fit (first a smooth warp from the landmarks alone, then the scan) folded the skin far more (3,500–5,000 folded triangles), because a 3D warp crosses the skin's inner wraps at the lips and eyes. Filling missing landmarks from the turned photos put a crease down a cheek: most fills came from one photo with nothing to check them against.
 - **Tissue depth comes from the lab head**, scaled to the person, not measured. A phone cannot see bone.

@@ -1,1 +1,6 @@
 *.mb filter=lfs diff=lfs merge=lfs -text
+# Capture data: never line-ending-convert (a depth .bin with no zero byte would look like text)
+captures/**/*.bin binary
+captures/**/*.jpg binary
+captures/**/*.png binary
+captures/**/*.zip binary

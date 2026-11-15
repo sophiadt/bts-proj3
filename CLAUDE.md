@@ -20,7 +20,7 @@ Facts the brief did not have:
 - **Skin rest ≠ output** along the top forehead edge ("pull_back", 1,254 vertices, up to 16.6 mm, and 0.3–1 mm on 403 more). The rig adds this offset as a **fixed amount that does not scale** with the head: the round-trip strip deviation was 0.83 mm at 1.05× and 4.16 mm at 0.75×, which is 5% and 25% of 16.6 mm. So the written skin rest = wanted face − template offset, and Maya then shows the fitted face exactly (p99 0.000 mm). The earlier "1 mm skin gap" was this offset, not a fitting error.
 - **Bones are placed from skin depth**, not by stretching the face's movement to the back of the head. At the face points the camera saw, the template's skin-to-bone depth (at subject scale) is kept under the fitted skin, and one similarity per bone is fitted; teeth follow their bone. On the synthetic face this took the skull's extra shrink from 12% to 0.9% and skin-through-skull spots from 36 to 1. Muscle and fat follow a field pinned at both the skin and the moved bone surfaces.
 - **Topology and UVs never change.** Only vertex positions move, so the existing rig (attachments, weights, joints, textures) carries over. `rig/sim_check.py` proves it per run: rest-mesh polygons and UVs identical to the lab scene in all 52 bodies. Compare the rest mesh, not `getTriangles()` or the visible OrbicularisOris (it has a `polyTriangulate1`), because Maya re-picks quad diagonals when a shape changes.
-- **First real capture (`Capture Data/Front|Left|Right`, Nov 2026): `LABELS_SWAPPED`.** Proof that doesn't depend on the check itself: `rgb.jpg`, turned 90° clockwise, shows "Superdry®" reading normally, so it isn't mirrored; on that photo landmark 33 lands on his *left* eye. Cause: the app's `.leftMirrored` mirrors MediaPipe's input. Fixed in `TrueDepth App/.../CameraManager.swift` (flip in `uprightBuffer`, depth row `1 − lm.x`, overlay mirrored for the selfie view), but **not yet built or verified on a phone**. Until a new capture passes without it, fit with `--relabel`. The live preview is a mirror image, so the red-dot test is: right hand on the right eye.
+- **First real capture (`captures/s01/s01_20261030T170049Z_guided`, fitted as `capture_01`): `LABELS_SWAPPED`.** Proof that doesn't depend on the check itself: `rgb.jpg`, turned 90° clockwise, shows "Superdry®" reading normally, so it isn't mirrored; on that photo landmark 33 lands on his *left* eye. Cause: the app's `.leftMirrored` mirrors MediaPipe's input. Fixed in `TrueDepth App/.../CameraManager.swift` (flip in `uprightBuffer`, depth row `1 − lm.x`, overlay mirrored for the selfie view), and **verified on a phone**: the burst capture `s01_20261110T212937Z_burst` (partner's build, 2026-11-10) is `OK` without relabelling. The old capture keeps `labels: swapped` in its `capture.json`, so `fit_subject.py` relabels it on its own. The live preview is a mirror image, so the red-dot test is: right hand on the right eye.
 - **Never judge expression from MediaPipe blendshapes.** They scored a neutral face eyeSquint ~0.5 and mouthPucker 0.71 (hooded/monolid eyes; low phone). `pipeline/neutral_check.py` measures lips and jaw in mm from reliable landmarks, never warns on eye opening, and takes the phone angle from the rigid fit. Many subjects are Asian; keep it that way.
 - **Capture-side robustness learned on the real capture:** keep only depth inside the face-oval outline (a hoodie and hair pulled the jaw skin up to 55 mm); smooth the scan (`denoise_cloud`, k=32) and end the skin fit at stiffness 20 (folds 2,449 → 745). Silhouette landmarks and the chin can carry wrong depth (chin read 80 mm behind the nose); they're filtered.
 - **Openings are aligned, not just masked** (professor's direction, Nov 2026). The scan's closest points stay masked within 3 mm of a hole, as the brief says. But each eye and mouth hole is split at its corners, and its upper and lower edges are pulled onto MediaPipe's eyelid and inner-lip contours (`pipeline/holes.py`), with depth taken from the smoothed scan. On the first capture this took the openings from 4.6 mm to about 0.1 mm off the real eyelids and lips.
@@ -42,6 +42,9 @@ Facts the brief did not have:
 
   `rig/write_rest.py --ui-ready` writes `<id>_ui.mb` with the 1,201 UI joints' keys after frame 14 removed.
 - **The iPhone app** is in `TrueDepth App/` (one folder: `.xcodeproj` + source). Commit messages: one short line, no Claude co-author.
+- **Captures** live in `captures/<subject>/<capture_id>/`; the id is `<subject>_<UTC YYYYMMDD>T<HHMMSS>Z_<mode>`, the subject an anonymous code (`s01`; never a name), the mode `guided`, `burst`, `photo` or `record`. The app names its session folder and zip that way and writes `capture.json`; `tools/ingest_capture.py` (standard library only) files AirDropped zips from `captures/_inbox/` or `--from ~/Downloads`. Pipeline scripts take a capture id or a folder. Steps for the person AirDropping are in `captures/README.md`.
+- **Guided capture is burst capture:** 16 depth frames per pose, per-pixel median (holes = 0). On s01 it lowered depth roughness 1.43 → 1.12 mm and halved flying pixels (`tools/compare_depth_noise.py`).
+- **The partner's Maya prototype** (`experimental/partner_scan_to_maya/`) is superseded: front view only, `_RENDER` skin copies, scale from the stylised eyes (1.68× too large). Don't build on it.
 - **Timeline** is 0–50, not 0–106.
 - `landmarks_lab.json`'s `mouth_corner_R` sits at x = −25.8, which is the subject's **left** (+X is the subject's right). The label is viewer-side.
 - The template is 1.42–1.45× a real face overall (eyes 1.6–1.7×, nose 1.2×). The fitted uniform scale lands near 0.69.
@@ -57,12 +60,13 @@ $MP rig/export_rest.py                 # all bodies + joints -> template_export/
 $MP rig/roundtrip_test.py              # identity + scale 1.05/0.75 gate
 $MP pipeline/canonical.py              # MediaPipe canonical mesh out of face_landmarker.task (committed)
 $MP pipeline/fixture.py                # config/landmark_to_vertex.json (committed, never per subject)
-$MP pipeline/mirror_check.py CAPTURE   # STOP: a person reviews the verdict before any app change
-$MP pipeline/fit_subject.py CAPTURE --id NAME
-$MP rig/write_rest.py template_export/subjects/NAME --save NAME --ui-ready
-$MP rig/sim_check.py template_export/scenes/NAME.mb --subject template_export/subjects/NAME
-$MP tools/render_fit.py NAME            # pictures + animation GIFs -> template_export/subjects/NAME/views
-$MP rig/ui_smoke_test.py NAME           # keyboard UI plays "not even you" on the fitted head (runs the lab's code)
+python tools/ingest_capture.py         # AirDropped zips in captures/_inbox/ -> captures/<subject>/<capture_id>/ (any Python)
+$MP pipeline/mirror_check.py ID        # STOP: a person reviews the verdict before any app change; then --record
+$MP pipeline/fit_subject.py ID         # ID = capture id; output name defaults to it (--id overrides)
+$MP rig/write_rest.py template_export/subjects/ID --save ID --ui-ready
+$MP rig/sim_check.py template_export/scenes/ID.mb --subject template_export/subjects/ID
+$MP tools/render_fit.py ID              # pictures + animation GIFs -> template_export/subjects/ID/views
+$MP rig/ui_smoke_test.py ID             # keyboard UI plays "not even you" on the fitted head (runs the lab's code)
 $MP pipeline/importance.py              # once, after the first UI test: skin importance map + Poisson-disk anchors
 $MP pipeline/build_base.py              # once (and after fit changes): base_human, the start head of every fit
 # Maya GUI: exec(open(r"C:\Users\syd3\bts-proj3\rig\keyboard_ui_fitted.py").read())
