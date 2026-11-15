@@ -221,7 +221,6 @@ xcuserdata/
 DerivedData/
 build/
 .DS_Store
-captures/
 Pods/
 
 # Maya exports of the lab template (regenerable; lab data, see bts-proj1/NOTICE).
@@ -236,3 +235,7 @@ cache/
 
 # pytest for mayapy, installed with pip --target (mayapy itself untouched)
 .pytest-lib/
+
+# Phone captures are committed under captures/<subject>/<capture_id>/; the
+# drop folder for AirDropped zips is not (see captures/README.md).
+captures/_inbox/

@@ -181,15 +181,53 @@ def check_upright(lm_tpl):
         raise ValueError("camera->template rotation looks wrong: " + "; ".join(probs))
 
 
+def resolve_capture(arg):
+    """A capture folder from a path or a capture id.
+
+    An existing path is used as given. Otherwise `arg` must be a capture id
+    (<subject>_<YYYYMMDD>T<HHMMSS>Z_<mode>), looked up in
+    captures/<subject>/<capture id>/.
+    """
+    path = Path(arg)
+    if path.exists():
+        return path
+    m = re.match(config.CAPTURE_ID_RE, str(arg))
+    if m is None:
+        raise FileNotFoundError(
+            "{0} is neither a folder nor a capture id (<subject>_<YYYYMMDD>T<HHMMSS>Z_<mode>)".format(arg))
+    folder = config.CAPTURES_DIR / m.group("subject") / str(arg)
+    if not folder.exists():
+        raise FileNotFoundError("capture {0} not found at {1}".format(arg, folder))
+    return folder
+
+
+def read_manifest(folder):
+    """The capture's capture.json as a dict, or None for a folder without one."""
+    path = Path(folder) / config.CAPTURE_MANIFEST
+    if not path.exists():
+        return None
+    with open(path, encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def capture_id(folder):
+    """The manifest's capture id, else the folder's name."""
+    manifest = read_manifest(folder) or {}
+    return manifest.get("capture_id") or Path(folder).name
+
+
 def load_capture(folder):
     """-> {view name: View}, e.g. {"front": ..., "left": ..., "right": ...}.
 
-    Accepts the app's flat folder (face_<timestamp>/front_..., left_..., ...)
-    and the same files sorted one level down (Capture Data/Front/front_...).
+    Accepts the flat layout of captures/<subject>/<capture id>/ (front_...,
+    left_..., right_...) and the same files sorted one level down
+    (Front/front_...). An extras/ folder (screenshots, other tools' outputs) is
+    never read.
     """
     folder = Path(folder)
     found = sorted(glob.glob(str(folder / "*landmarks_3d_mm.json")))
-    found += sorted(glob.glob(str(folder / "*" / "*landmarks_3d_mm.json")))
+    found += sorted(f for f in glob.glob(str(folder / "*" / "*landmarks_3d_mm.json"))
+                    if Path(f).parent.name != "extras")
     if not found:
         raise FileNotFoundError("no *landmarks_3d_mm.json in {0} or its subfolders".format(folder))
     views = {}

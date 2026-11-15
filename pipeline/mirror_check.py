@@ -25,10 +25,16 @@ Verdicts (needs turned views to separate the mirror cases):
                                                         residual looks fine)
   INCONCLUSIVE_OK / INCONCLUSIVE_FLIPPED   no usable turned view; handedness only
 
-    mayapy pipeline/mirror_check.py CAPTURE_DIR
+    mayapy pipeline/mirror_check.py CAPTURE [--record]
+
+CAPTURE is a capture id (s01_20261110T212937Z_burst, looked up under
+captures/) or a folder. --record writes the verdict into the capture's
+capture.json once a person has reviewed it (labels: ok / swapped / unchecked);
+fit_subject.py reads it from there.
 """
 
 import argparse
+import datetime
 import sys
 from pathlib import Path
 
@@ -167,12 +173,31 @@ ADVICE = {
 }
 
 
+# What a reviewed verdict means for the capture's left/right labels.
+LABELS_FOR_VERDICT = {"OK": "ok", "LABELS_SWAPPED": "swapped"}
+
+
+def record_verdict(folder, res, run_path):
+    """Store a reviewed verdict in the capture's capture.json (labels + mirror_check)."""
+    manifest = cap.read_manifest(folder)
+    if manifest is None:
+        raise FileNotFoundError("{0} has no capture.json; file it with tools/ingest_capture.py first".format(folder))
+    manifest["labels"] = LABELS_FOR_VERDICT.get(res["verdict"], "unchecked")
+    manifest["mirror_check"] = {"verdict": res["verdict"], "run": str(Path(run_path).relative_to(config.REPO_ROOT))
+                                if Path(run_path).is_relative_to(config.REPO_ROOT) else str(run_path),
+                                "date": datetime.date.today().isoformat()}
+    cio.write_json_atomic(Path(folder) / config.CAPTURE_MANIFEST, manifest)
+    return manifest["labels"]
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("capture")
+    ap.add_argument("capture", help="capture id (s01_20261110T212937Z_burst) or folder")
+    ap.add_argument("--record", action="store_true",
+                    help="after reviewing the verdict, store it in the capture's capture.json")
     args = ap.parse_args()
-    folder = Path(args.capture)
-    with cio.RunDir(folder.name, "mirror_check", "pipeline/mirror_check.py") as run:
+    folder = cap.resolve_capture(args.capture)
+    with cio.RunDir(cap.capture_id(folder), "mirror_check", "pipeline/mirror_check.py") as run:
         views = cap.load_capture(folder)
         res = check(views)
         res["advice"] = ADVICE.get(res["verdict"])
@@ -184,6 +209,8 @@ def main():
                 r["registration_bad_frac"]))
         print("VERDICT:", res["verdict"])
         print(res["advice"])
+        if args.record:
+            print("recorded in capture.json: labels =", record_verdict(folder, res, run.path))
         if res["verdict"] != "OK":
             sys.exit(2)
 

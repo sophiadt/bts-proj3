@@ -17,7 +17,11 @@ Then, in Maya:
     mayapy rig/write_rest.py template_export/subjects/<id> --save <id>
     mayapy rig/sim_check.py template_export/scenes/<id>.mb --subject <id>
 
-    mayapy pipeline/fit_subject.py CAPTURE_DIR [--id NAME] [--relabel] [--force]
+    mayapy pipeline/fit_subject.py CAPTURE [--id NAME] [--relabel | --no-relabel] [--force]
+
+CAPTURE is a capture id (looked up under captures/) or a folder; the subject
+id defaults to the capture id. A capture.json recording `labels: swapped`
+turns --relabel on.
 """
 
 import argparse
@@ -448,9 +452,11 @@ def fit(capture_dir, subject_id, out_root=None, do_relabel=False, force=False, u
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("capture")
-    ap.add_argument("--id", default=None)
-    ap.add_argument("--relabel", action="store_true", help="swap left/right indices if the gate says LABELS_SWAPPED")
+    ap.add_argument("capture", help="capture id (s01_20261110T212937Z_burst) or folder")
+    ap.add_argument("--id", default=None, help="subject output name (default: the capture id)")
+    ap.add_argument("--relabel", action="store_true", help="swap left/right indices if the gate says LABELS_SWAPPED "
+                    "(automatic when capture.json records labels: swapped)")
+    ap.add_argument("--no-relabel", action="store_true", help="ignore capture.json's labels: swapped")
     ap.add_argument("--force", action="store_true", help="proceed past a failing mirror gate (not for real fits)")
     ap.add_argument("--anchors", action="store_true", help="extra scan weight on the Poisson-disk anchors (measured no gain)")
     ap.add_argument("--base", default=None,
@@ -461,7 +467,13 @@ def main():
     base = args.base
     if base is None and not args.lab_head and (config.template_export_dir() / "subjects" / BASE_SUBJECT).exists():
         base = BASE_SUBJECT
-    fit(args.capture, args.id or Path(args.capture).name, do_relabel=args.relabel, force=args.force,
+    capture = cap.resolve_capture(args.capture)
+    manifest = cap.read_manifest(capture) or {}
+    relabel_flag = args.relabel
+    if not args.relabel and not args.no_relabel and manifest.get("labels") == "swapped":
+        relabel_flag = True
+        print("capture.json records labels: swapped (a reviewed mirror check) -> relabelling; --no-relabel to skip")
+    fit(capture, args.id or cap.capture_id(capture), do_relabel=relabel_flag, force=args.force,
         use_anchors=args.anchors, base=base)
 
 

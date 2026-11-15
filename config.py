@@ -29,6 +29,17 @@ TEMPLATE_JSON = REPO_ROOT / "config" / "template.json"
 LANDMARKS_LAB_JSON = REPO_ROOT / "config" / "landmarks_lab.json"
 RUNS_DIR = REPO_ROOT / "runs"
 
+# Phone captures: captures/<subject>/<capture_id>/ (see captures/README.md).
+# Subjects are anonymous codes (s01, s02, ...); the code-to-person list is
+# never committed. A capture id is <subject>_<UTC YYYYMMDD>T<HHMMSS>Z_<mode>,
+# the same name the app gives the session folder and its zip.
+CAPTURES_DIR = REPO_ROOT / "captures"
+CAPTURE_INBOX = CAPTURES_DIR / "_inbox"
+CAPTURE_MANIFEST = "capture.json"
+CAPTURE_MODES = ("guided", "burst", "photo", "record")
+SUBJECT_RE = r"^s\d{2,}$"
+CAPTURE_ID_RE = r"^(?P<subject>s\d{2,})_(?P<stamp>\d{8}T\d{6}Z)_(?P<mode>guided|burst|photo|record)$"
+
 # Maya side. The scene is opened read-only; modified copies go to
 # TEMPLATE_EXPORT_DIR/scenes and never overwrite SCENE_PATH.
 MAYAPY = Path(os.environ.get("MAYAPY", r"C:\Program Files\Autodesk\Maya2023\bin\mayapy.exe"))
