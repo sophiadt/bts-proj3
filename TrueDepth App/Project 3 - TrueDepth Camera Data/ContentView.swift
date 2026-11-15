@@ -5,12 +5,15 @@ struct ContentView: View {
     @State private var recordMode = false          // false = photo, true = record
     @State private var flash = false
     @State private var recordStartedAt: Date?
+    @AppStorage("subjectID") private var subjectID = "s01"   // anonymous code, kept between launches
 
     var body: some View {
         VStack(spacing: 0) {
             preview
             Spacer(minLength: 0)
             infoText
+            subjectField
+                .padding(.top, 8)
             modeSelector
                 .padding(.top, 14)
             Spacer(minLength: 0)
@@ -111,6 +114,34 @@ struct ContentView: View {
         .padding(.horizontal, 20)
         .padding(.top, 10)
         .frame(minHeight: 44)
+    }
+
+    // Anonymous subject code (s01, s02, ...). Every saved folder and zip is named
+    // <subject>_<UTC time>_<mode>, which is the capture id the repo files it under.
+    private var subjectField: some View {
+        HStack(spacing: 8) {
+            Text("SUBJECT")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(Color.white.opacity(0.7))
+            TextField("s01", text: $subjectID)
+                .font(.system(size: 14, weight: .semibold, design: .monospaced))
+                .foregroundColor(CameraManager.isValidSubject(subjectID) ? Color.white : Color.orange)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .keyboardType(.asciiCapable)
+                .frame(width: 64)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color.white.opacity(0.12), in: RoundedRectangle(cornerRadius: 6))
+                .disabled(camera.isCapturing || camera.isRecording)
+            if !CameraManager.isValidSubject(subjectID) {
+                Text("use a code like s01")
+                    .font(.system(size: 11))
+                    .foregroundColor(Color.orange)
+            }
+        }
+        .onAppear { camera.subjectID = subjectID }
+        .onChange(of: subjectID) { _, newValue in camera.subjectID = newValue }
     }
 
     private var modeSelector: some View {

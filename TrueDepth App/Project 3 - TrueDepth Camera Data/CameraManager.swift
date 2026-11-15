@@ -40,6 +40,35 @@ final class CameraManager: NSObject, ObservableObject, AVCaptureDataOutputSynchr
     private let rawQueue = DispatchQueue(label: "raw.queue", qos: .utility)
     private let rawCI = CIContext()
     private var wantRaw = false
+    // burst depth: several depth frames per pose, merged into one steadier depth map (all on `queue`)
+    private let burstCount = 16
+    private var burstTarget = 0
+    private var burstFrames: [[Float]] = []
+    private var burstPixelBuffer: CVPixelBuffer?       // colour frame from the middle of the burst
+    private var burstDone: (([[Float]], CVPixelBuffer?) -> Void)?
+
+    // Session names follow the repo's capture ids (captures/README.md):
+    // <subject>_<UTC yyyyMMdd'T'HHmmss'Z'>_<mode>, e.g. s01_20261110T212937Z_burst.
+    // The subject is an anonymous code typed in ContentView; names never go in the repo.
+    var subjectID = "s00" { didSet { subjectID = CameraManager.cleanSubject(subjectID) } }
+
+    static func cleanSubject(_ s: String) -> String {
+        let kept = s.lowercased().filter { $0.isASCII && ($0.isLetter || $0.isNumber) }
+        return kept.isEmpty ? "s00" : String(kept)
+    }
+
+    /// The repo only accepts anonymous codes like s01 (tools/ingest_capture.py refuses others).
+    static func isValidSubject(_ s: String) -> Bool {
+        s.range(of: "^s[0-9]{2,}$", options: .regularExpression) != nil
+    }
+
+    private static let stampFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.timeZone = TimeZone(identifier: "UTC")
+        f.dateFormat = "yyyyMMdd'T'HHmmss'Z'"
+        return f
+    }()
 
     @Published var status = "Starting..."
     @Published var saveMessage = ""
@@ -161,6 +190,11 @@ final class CameraManager: NSObject, ObservableObject, AVCaptureDataOutputSynchr
         }
         latestDepth = depth
         latestPixelBuffer = CMSampleBufferGetImageBuffer(syncedVideo.sampleBuffer)
+        if burstTarget > 0 {
+            burstFrames.append(depthArray(depth.depthDataMap).data)
+            if burstFrames.count == max(1, burstTarget / 2) { burstPixelBuffer = latestPixelBuffer }
+            if burstFrames.count >= burstTarget { finishBurst() }
+        }
         // Face detection runs on its own queue so it never blocks the camera.
         // If it is still busy with the previous frame, this frame is skipped.
         if !visionBusy, let pb = latestPixelBuffer {
@@ -382,8 +416,10 @@ final class CameraManager: NSObject, ObservableObject, AVCaptureDataOutputSynchr
     // MARK: - Saving
 
     // Call only on `queue`.
-    private func writeFrame(prefix: String, dir: URL) throws -> (files: [URL], report: String) {
-        guard let depth = latestDepth, let pb = latestPixelBuffer else {
+    private func writeFrame(prefix: String, dir: URL, depthOverride: [Float]? = nil,
+                            burstFrames nBurst: Int = 1,
+                            pixelOverride: CVPixelBuffer? = nil) throws -> (files: [URL], report: String) {
+        guard let depth = latestDepth, let pb = pixelOverride ?? latestPixelBuffer else {
             throw NSError(domain: "save", code: 0, userInfo: [NSLocalizedDescriptionKey: "No frame yet"])
         }
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
@@ -409,7 +445,13 @@ final class CameraManager: NSObject, ObservableObject, AVCaptureDataOutputSynchr
         }
 
         // Raw depth: float32 meters, row-major
-        let (arr, w, h) = depthArray(depth.depthDataMap)
+        let (rawArr, w, h) = depthArray(depth.depthDataMap)
+        var arr = rawArr
+        var merged = 1
+        if let o = depthOverride, o.count == rawArr.count {      // per-pixel median of the burst
+            arr = o
+            merged = nBurst
+        }
         let depthURL = dir.appendingPathComponent("\(prefix)depth_\(w)x\(h)_float32_m.bin")
         let depthData = arr.withUnsafeBufferPointer { Data(buffer: $0) }
         try depthData.write(to: depthURL)
@@ -467,6 +509,8 @@ final class CameraManager: NSObject, ObservableObject, AVCaptureDataOutputSynchr
             "depth_width": w, "depth_height": h,
             "rgb_width": CVPixelBufferGetWidth(pb), "rgb_height": CVPixelBufferGetHeight(pb),
             "depth_filtered": depth.isDepthDataFiltered,
+            "depth_frames_merged": merged,
+            "depth_merge": merged > 1 ? "per-pixel median" : "none",
             "mediapipe_report": report
         ]
         if let cal = depth.cameraCalibrationData {
@@ -494,20 +538,59 @@ final class CameraManager: NSObject, ObservableObject, AVCaptureDataOutputSynchr
         return (files, report)
     }
 
-    private func newSessionDir(_ name: String) -> URL {
+    // mode: photo, guided, burst or record (the last part of the capture id)
+    private func newSessionDir(mode: String) -> URL {
         let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        return docs.appendingPathComponent("\(name)_\(Int(Date().timeIntervalSince1970))")
+        let stamp = CameraManager.stampFormatter.string(from: Date())
+        return docs.appendingPathComponent("\(subjectID)_\(stamp)_\(mode)")
+    }
+
+    // capture.json: subject, mode and time for tools/ingest_capture.py, all read
+    // back from the folder name so the name and the manifest cannot disagree.
+    private func writeManifest(dir: URL, views: [String], framesMerged: Int) -> URL? {
+        let id = dir.lastPathComponent
+        let parts = id.split(separator: "_").map(String.init)
+        guard parts.count == 3 else { return nil }
+        let created = CameraManager.stampFormatter.date(from: parts[1]).map { ISO8601DateFormatter().string(from: $0) } ?? ""
+        let info = Bundle.main.infoDictionary ?? [:]
+        var sys = utsname()
+        uname(&sys)
+        let device = withUnsafeBytes(of: &sys.machine) { raw in
+            String(decoding: raw.prefix { $0 != 0 }, as: UTF8.self)
+        }
+        let manifest: [String: Any] = [
+            "format": 1,
+            "capture_id": id,
+            "subject": parts[0],
+            "mode": parts[2],
+            "created_utc": created,
+            "views": views,
+            "depth_frames_merged": framesMerged,
+            "app": ["version": info["CFBundleShortVersionString"] as? String ?? "?",
+                    "build": info["CFBundleVersion"] as? String ?? "?"],
+            "device": device,
+            "labels": "unchecked"
+        ]
+        let url = dir.appendingPathComponent("capture.json")
+        do {
+            try JSONSerialization.data(withJSONObject: manifest, options: [.prettyPrinted, .sortedKeys]).write(to: url)
+            return url
+        } catch {
+            return nil
+        }
     }
 
     // Single frame
     func saveFrame() {
-        let dir = newSessionDir("capture")
+        let dir = newSessionDir(mode: "photo")
         queue.async {
             do {
                 let result = try self.writeFrame(prefix: "", dir: dir)
+                let manifest = self.writeManifest(dir: dir, views: ["single"], framesMerged: 1)
+                let zip = self.zipFolder(dir)             // one file to AirDrop: <capture_id>.zip
                 DispatchQueue.main.async {
                     self.saveMessage = "\(result.report)\nSaved \(dir.lastPathComponent)"
-                    self.savedFiles = result.files
+                    self.savedFiles = zip.map { [$0] } ?? result.files + [manifest].compactMap { $0 }
                 }
             } catch {
                 DispatchQueue.main.async { self.saveMessage = "Save failed: \(error.localizedDescription)" }
@@ -522,7 +605,7 @@ final class CameraManager: NSObject, ObservableObject, AVCaptureDataOutputSynchr
         savedFiles = []
         saveMessage = ""
         pending = 3
-        let dir = newSessionDir("face")
+        let dir = newSessionDir(mode: burstCount > 1 ? "burst" : "guided")
         let poses: [(String, String)] = [
             ("front", "Look straight at the phone"),
             ("left", "Slowly turn your head to YOUR LEFT (about 30°)"),
@@ -534,22 +617,77 @@ final class CameraManager: NSObject, ObservableObject, AVCaptureDataOutputSynchr
                 DispatchQueue.main.asyncAfter(deadline: .now() + t) { self.prompt = "\(text)\n\(s)" }
                 t += 1.0
             }
-            DispatchQueue.main.asyncAfter(deadline: .now() + t) { self.prompt = "Hold still..." }
-            t += 0.4
             DispatchQueue.main.asyncAfter(deadline: .now() + t) {
-                self.prompt = "Processing \(name)..."
-                self.capturePose(name, in: dir)
+                self.prompt = "Hold still..."
+                self.capturePose(name, in: dir)          // starts collecting the depth burst now
             }
+            t += 1.0                                      // 16 depth frames take about 0.6 s
+            DispatchQueue.main.asyncAfter(deadline: .now() + t) { self.prompt = "Processing \(name)..." }
             t += 0.8
         }
     }
 
+    // Collect a burst of depth frames, then save the pose with their per-pixel median.
     private func capturePose(_ name: String, in dir: URL) {
         queue.async {
+            self.burstFrames = []
+            self.burstPixelBuffer = nil
+            self.burstDone = { frames, pb in
+                DispatchQueue.global(qos: .userInitiated).async {
+                    let merged = self.medianDepth(frames)
+                    self.queue.async { self.finishPose(name, in: dir, depth: merged, frames: frames.count, pixels: pb) }
+                }
+            }
+            self.burstTarget = self.burstCount
+            // if frames stop arriving, use what we have
+            self.queue.asyncAfter(deadline: .now() + 2.5) { self.finishBurst() }
+        }
+    }
+
+    // Call only on `queue`.
+    private func finishBurst() {
+        guard burstTarget > 0 else { return }
+        let frames = burstFrames
+        let pb = burstPixelBuffer
+        let done = burstDone
+        burstTarget = 0
+        burstFrames = []
+        burstPixelBuffer = nil
+        burstDone = nil
+        done?(frames, pb)
+    }
+
+    // Per-pixel median of the valid readings (meters). A pixel needs readings in at least half the
+    // frames, otherwise it stays 0 (no depth). The median also drops single-frame flying pixels.
+    private func medianDepth(_ frames: [[Float]]) -> [Float]? {
+        guard let first = frames.first else { return nil }
+        if frames.count == 1 { return first }
+        let n = first.count
+        let need = max(2, frames.count / 2)
+        var out = [Float](repeating: 0, count: n)
+        var vals = [Float]()
+        vals.reserveCapacity(frames.count)
+        for i in 0..<n {
+            vals.removeAll(keepingCapacity: true)
+            for f in frames where f.count == n {
+                let v = f[i]
+                if v.isFinite && v > 0 { vals.append(v) }
+            }
+            if vals.count >= need {
+                vals.sort()
+                out[i] = vals[vals.count / 2]
+            }
+        }
+        return out
+    }
+
+    // Call only on `queue`.
+    private func finishPose(_ name: String, in dir: URL, depth: [Float]?, frames: Int, pixels: CVPixelBuffer?) {
+        do {
             let outcome: (files: [URL], line: String)
             do {
-                let r = try self.writeFrame(prefix: "\(name)_", dir: dir)
-                outcome = (r.files, "\(name): \(r.report)")
+                let r = try self.writeFrame(prefix: "\(name)_", dir: dir, depthOverride: depth, burstFrames: frames, pixelOverride: pixels)
+                outcome = (r.files, "\(name): \(r.report)" + (frames > 1 ? " | \(frames) depth frames merged" : ""))
             } catch {
                 outcome = ([], "\(name) failed: \(error.localizedDescription)")
             }
@@ -558,9 +696,23 @@ final class CameraManager: NSObject, ObservableObject, AVCaptureDataOutputSynchr
                 self.saveMessage += outcome.line + "\n"
                 self.pending -= 1
                 if self.pending == 0 {
-                    self.prompt = ""
-                    self.isCapturing = false
-                    self.saveMessage += "Saved \(dir.lastPathComponent)"
+                    // Session done: write capture.json and zip the folder, so one AirDrop
+                    // carries the whole capture as <capture_id>.zip.
+                    self.queue.async {
+                        let manifest = self.writeManifest(dir: dir, views: ["front", "left", "right"],
+                                                          framesMerged: self.burstCount)
+                        let zip = self.zipFolder(dir)
+                        DispatchQueue.main.async {
+                            if let zip = zip {
+                                self.savedFiles = [zip]
+                            } else if let manifest = manifest {
+                                self.savedFiles.append(manifest)
+                            }
+                            self.prompt = ""
+                            self.isCapturing = false
+                            self.saveMessage += "Saved \(dir.lastPathComponent)" + (zip != nil ? ".zip" : "")
+                        }
+                    }
                 }
             }
         }
@@ -720,6 +872,7 @@ final class CameraManager: NSObject, ObservableObject, AVCaptureDataOutputSynchr
         isRecording = true
         saveMessage = "Recording... start with a neutral face"
         savedFiles = []
+        let dir = newSessionDir(mode: "record")          // named on the main thread, where subjectID is set
         visionQueue.async {
             self.recFrames = []
             self.recMisses = 0
@@ -727,7 +880,6 @@ final class CameraManager: NSObject, ObservableObject, AVCaptureDataOutputSynchr
             self.recMeta = [:]
             self.rawSeen = 0; self.rawSaved = 0; self.rawDropped = 0; self.rawPending = 0
             self.recRaw = self.wantRaw
-            let dir = self.newSessionDir("recording")
             self.recDir = dir
             let rawDir = dir.appendingPathComponent("raw")
             try? FileManager.default.createDirectory(at: self.recRaw ? rawDir : dir, withIntermediateDirectories: true)
@@ -741,7 +893,7 @@ final class CameraManager: NSObject, ObservableObject, AVCaptureDataOutputSynchr
             self.recording = false
             self.rawQueue.sync { }                 // wait until every queued raw frame is written
             let frames = self.recFrames, misses = self.recMisses, k = self.recIntrinsics
-            let dir = self.recDir ?? self.newSessionDir("recording")
+            let dir = self.recDir ?? self.newSessionDir(mode: "record")
             let usedRaw = self.recRaw
             let savedRaw = self.rawSaved, droppedRaw = self.rawDropped
             var message: String
@@ -792,9 +944,13 @@ final class CameraManager: NSObject, ObservableObject, AVCaptureDataOutputSynchr
                 try JSONSerialization.data(withJSONObject: meta, options: .prettyPrinted).write(to: metaURL)
                 files.append(metaURL)
 
+                if let manifest = self.writeManifest(dir: dir, views: [], framesMerged: 1) {
+                    files.append(manifest)
+                }
+                // One file to AirDrop: <capture_id>.zip (individual files only if zipping fails).
+                if let zip = self.zipFolder(dir) { files = [zip] }
                 var rawNote = ""
                 if usedRaw {
-                    if let zip = self.zipFolder(dir) { files.insert(zip, at: 0) }
                     rawNote = "\nRaw frames: \(savedRaw) saved, \(droppedRaw) skipped (writer busy)"
                 }
                 let secs = frames.last?.t ?? 0
