@@ -1,0 +1,61 @@
+{
+  "subject": "s01_20261030T170049Z_guided",
+  "pathway": "mirror_check",
+  "script": "pipeline/mirror_check.py",
+  "run_id": "20261114T180432_0c73",
+  "status": "failed",
+  "error": "SystemExit(2)",
+  "traceback": "Traceback (most recent call last):\n  File \"E:\\GitHub\\bts-proj3\\pipeline\\mirror_check.py\", line 215, in main\n    sys.exit(2)\n    ~~~~~~~~^^^\nSystemExit: 2\n",
+  "started_at": "2026-11-14T18:04:32",
+  "wall_clock_s": 0.042,
+  "git": {
+    "sha": "525c94f8fc72b39ff3850f299287078efe4478a2",
+    "dirty": true
+  },
+  "python": "3.13.3",
+  "packages": {
+    "numpy": "2.5.4",
+    "scipy": "1.18.1",
+    "trimesh": "5.2.0"
+  },
+  "metrics": {
+    "verdict": "LABELS_SWAPPED",
+    "views": {
+      "front": {
+        "n_valid": 478,
+        "n_null": 0,
+        "n_depth_outliers": 88,
+        "handedness_ok": false,
+        "registration_bad_frac": 0.009259259259259259,
+        "nose_is_nearest": true,
+        "turn_instruction": null,
+        "right_minus_left_z_mm": -7.8196339793019485,
+        "turn_ok": null
+      },
+      "left": {
+        "n_valid": 478,
+        "n_null": 0,
+        "n_depth_outliers": 112,
+        "handedness_ok": false,
+        "registration_bad_frac": 0.004629629629629629,
+        "nose_is_nearest": true,
+        "turn_instruction": "subject_left",
+        "right_minus_left_z_mm": 16.468394886363637,
+        "turn_ok": false
+      },
+      "right": {
+        "n_valid": 478,
+        "n_null": 0,
+        "n_depth_outliers": 187,
+        "handedness_ok": false,
+        "registration_bad_frac": 0.04861111111111111,
+        "nose_is_nearest": true,
+        "turn_instruction": "subject_right",
+        "right_minus_left_z_mm": -152.40874847808442,
+        "turn_ok": false
+      }
+    },
+    "canonical_handedness": 1.0,
+    "advice": "The cloud is correct but MediaPipe's left/right indices are mirrored. Fit with --relabel, or fix the app (un-mirror MediaPipe's input AND remap depth to match). Confirm on the RGB before changing the app."
+  }
+}

@@ -11,8 +11,12 @@
     "right"
   ],
   "depth_frames_merged": 16,
-  "labels": "unchecked",
-  "mirror_check": null,
+  "labels": "ok",
+  "mirror_check": {
+    "verdict": "OK",
+    "run": "runs/s01_20261110T212937Z_burst/mirror_check/20261114T180454_71b1",
+    "date": "2026-11-14"
+  },
   "notes": "First capture with burst depth (16 frames per pose, per-pixel median) from the partner's app build with the mirror fix. extras/ holds the partner's Maya prototype outputs (registration.json, landmarks_on_model.json) and its viewport screenshots; see experimental/partner_scan_to_maya/.",
   "app": "unknown (no capture.json from the app)",
   "files": [

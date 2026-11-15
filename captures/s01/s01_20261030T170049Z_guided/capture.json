@@ -12,7 +12,11 @@
   ],
   "depth_frames_merged": 1,
   "labels": "swapped",
-  "mirror_check": null,
+  "mirror_check": {
+    "verdict": "LABELS_SWAPPED",
+    "run": "runs/s01_20261030T170049Z_guided/mirror_check/20261114T180455_fe29",
+    "date": "2026-11-14"
+  },
   "notes": "First real capture (2026-10-30), app built before the mirror fix (eed36d1): MediaPipe left/right labels mirrored, so fit with relabelling. Fitted on the Ziva workstation as subject capture_01.",
   "app": "unknown (no capture.json from the app)",
   "files": [

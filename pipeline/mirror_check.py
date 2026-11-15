@@ -183,8 +183,10 @@ def record_verdict(folder, res, run_path):
     if manifest is None:
         raise FileNotFoundError("{0} has no capture.json; file it with tools/ingest_capture.py first".format(folder))
     manifest["labels"] = LABELS_FOR_VERDICT.get(res["verdict"], "unchecked")
-    manifest["mirror_check"] = {"verdict": res["verdict"], "run": str(Path(run_path).relative_to(config.REPO_ROOT))
-                                if Path(run_path).is_relative_to(config.REPO_ROOT) else str(run_path),
+    run_path = Path(run_path)
+    if run_path.is_relative_to(config.REPO_ROOT):
+        run_path = run_path.relative_to(config.REPO_ROOT)
+    manifest["mirror_check"] = {"verdict": res["verdict"], "run": run_path.as_posix(),
                                 "date": datetime.date.today().isoformat()}
     cio.write_json_atomic(Path(folder) / config.CAPTURE_MANIFEST, manifest)
     return manifest["labels"]

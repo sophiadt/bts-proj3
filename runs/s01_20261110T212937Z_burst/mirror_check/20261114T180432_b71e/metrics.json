@@ -1,0 +1,61 @@
+{
+  "subject": "s01_20261110T212937Z_burst",
+  "pathway": "mirror_check",
+  "script": "pipeline/mirror_check.py",
+  "run_id": "20261114T180432_b71e",
+  "status": "ok",
+  "error": null,
+  "traceback": null,
+  "started_at": "2026-11-14T18:04:32",
+  "wall_clock_s": 0.042,
+  "git": {
+    "sha": "525c94f8fc72b39ff3850f299287078efe4478a2",
+    "dirty": true
+  },
+  "python": "3.13.3",
+  "packages": {
+    "numpy": "2.5.4",
+    "scipy": "1.18.1",
+    "trimesh": "5.2.0"
+  },
+  "metrics": {
+    "verdict": "OK",
+    "views": {
+      "front": {
+        "n_valid": 478,
+        "n_null": 0,
+        "n_depth_outliers": 79,
+        "handedness_ok": true,
+        "registration_bad_frac": 0.0023148148148148147,
+        "nose_is_nearest": true,
+        "turn_instruction": null,
+        "right_minus_left_z_mm": 5.672306209415584,
+        "turn_ok": null
+      },
+      "left": {
+        "n_valid": 478,
+        "n_null": 0,
+        "n_depth_outliers": 126,
+        "handedness_ok": true,
+        "registration_bad_frac": 0.020833333333333332,
+        "nose_is_nearest": true,
+        "turn_instruction": "subject_left",
+        "right_minus_left_z_mm": -22.7003221387987,
+        "turn_ok": true
+      },
+      "right": {
+        "n_valid": 478,
+        "n_null": 0,
+        "n_depth_outliers": 168,
+        "handedness_ok": true,
+        "registration_bad_frac": 0.020833333333333332,
+        "nose_is_nearest": true,
+        "turn_instruction": "subject_right",
+        "right_minus_left_z_mm": 96.95236404220779,
+        "turn_ok": true
+      }
+    },
+    "canonical_handedness": 1.0,
+    "advice": "Labels and geometry agree with anatomy. Proceed."
+  }
+}
