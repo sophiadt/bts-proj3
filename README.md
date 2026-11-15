@@ -101,12 +101,12 @@ The subject output name defaults to the capture id (`--id` overrides it). The fi
 
 You get:
 
-| Where | What |
-|---|---|
-| `template_export/scenes/<id>.mb` | the fitted head in the lab rig, with the lab scene's own keys (frames 0–50: the tissue settling, no speech) |
-| `template_export/scenes/<id>_ui.mb` | the same head with the baked keys after frame 14 removed, for the keyboard UI |
-| `template_export/subjects/<id>/report.json` | every number from the fit: residuals, folds, skin-to-skull depth, neutral-face check |
-| `template_export/subjects/<id>/views/` | before/after pictures, the cut through the head, animation GIFs |
+| Where                                         | What                                                                                                         |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `template_export/scenes/<id>.mb`            | the fitted head in the lab rig, with the lab scene's own keys (frames 0–50: the tissue settling, no speech) |
+| `template_export/scenes/<id>_ui.mb`         | the same head with the baked keys after frame 14 removed, for the keyboard UI                                |
+| `template_export/subjects/<id>/report.json` | every number from the fit: residuals, folds, skin-to-skull depth, neutral-face check                         |
+| `template_export/subjects/<id>/views/`      | before/after pictures, the cut through the head, animation GIFs                                              |
 
 The first time on a new machine, set up the template once (each takes a few minutes):
 
@@ -157,6 +157,7 @@ The fit never uses MediaPipe's blendshape scores. They are saved in `meta.json` 
 # 📊 Capture files
 
 Each capture lives in `captures/<subject>/<capture_id>/`, where the capture id is `<subject>_<UTC YYYYMMDD>T<HHMMSS>Z_<mode>` (mode `guided`, `burst`, `photo` or `record`). The app names the session folder and its zip the same way. Next to the app's files are:
+
 - `capture.json`: subject, mode, time, app build, and the reviewed left/right verdict (`labels: ok / swapped / unchecked`);
 - `extras/`: anything the app didn't write, such as screenshots or other tools' outputs.
 
@@ -164,14 +165,14 @@ The layout, the naming rules and the steps from phone to repo are in [`captures/
 
 Guided capture writes seven files per pose (`front_`, `left_`, `right_`), 21 in all:
 
-| File | Contents |
-|---|---|
-| `<pose>_rgb.jpg` | Colour photo in the sensor's native orientation (sideways); same pixel grid as the depth |
-| `<pose>_rgb_upright.jpg` | The same photo turned upright, not mirrored, for viewing (new app versions) |
-| `<pose>_depth_<W>x<H>_float32_m.bin` | Raw depth in metres, one float32 per pixel, row-major |
-| `<pose>_meta.json` | Intrinsics, image sizes, `depth_filtered`, lens distortion tables (saved, not applied), pupil distance, blendshape scores |
-| `<pose>_landmarks_3d_mm.json` | 478 points `[x, y, z]` in mm, `null` where depth is missing; each index keeps its slot |
-| `<pose>_landmarks.ply`, `<pose>_face_crop.ply` | For viewing only (nulls dropped, so indices shift) |
+| File                                               | Contents                                                                                                                    |
+| -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `<pose>_rgb.jpg`                                 | Colour photo in the sensor's native orientation (sideways); same pixel grid as the depth                                    |
+| `<pose>_rgb_upright.jpg`                         | The same photo turned upright, not mirrored, for viewing (new app versions)                                                 |
+| `<pose>_depth_<W>x<H>_float32_m.bin`             | Raw depth in metres, one float32 per pixel, row-major                                                                       |
+| `<pose>_meta.json`                               | Intrinsics, image sizes, `depth_filtered`, lens distortion tables (saved, not applied), pupil distance, blendshape scores |
+| `<pose>_landmarks_3d_mm.json`                    | 478 points `[x, y, z]` in mm, `null` where depth is missing; each index keeps its slot                                  |
+| `<pose>_landmarks.ply`, `<pose>_face_crop.ply` | For viewing only (nulls dropped, so indices shift)                                                                          |
 
 A single photo (`..._photo`) writes the same files without a prefix. A recording (`..._record`) writes `landmarks_sequence_mm.json`, `recording_meta.json` and, with RAW on, a `raw/` folder. Every session ends with `capture.json` and is shared as one `<capture_id>.zip`. The fitting pipeline reads guided and burst captures; it cannot read recordings yet.
 
@@ -190,25 +191,26 @@ A single photo (`..._photo`) writes the same files without a prefix. A recording
 
 # 📈 First real capture (`captures/s01/s01_20261030T170049Z_guided/`, fitted as `capture_01`)
 
-| Measure | Result |
-|---|---|
-| Landmarks with depth | 478/478 in each pose |
-| Left/right check | `LABELS_SWAPPED` (app mirroring; fitted with `--relabel`, OK after) |
-| Neutral-face check | OK: lips closed (0.3–0.6 mm), eyelids 7–11.5 mm, phone within 15° |
-| Start head | `base_human` (the lab head reshaped to an average human face) |
-| Size against the lab head | 71.9% |
-| Alignment error, before reshaping | 5.4 mm typical |
-| Skin to landmarks, after reshaping | 1.1 mm typical |
-| Skin to scan | 0.85 mm typical, 3.6 mm for 95% |
-| Folded skin triangles | 340 of 31,225 (745 before the human start head and the fixes below) |
-| Eye and mouth openings | 0.5 mm off the person's eyelids and inner lips |
-| Mouth | closed (lips 3.2 mm apart at the midline); front teeth 8.3 mm behind the lips |
-| Eyeballs | 24 mm, behind the lids |
-| Skin-to-skull depth | 1.01× the lab head's |
-| In Maya | shows the fitted face exactly; polygons and UVs identical to the lab head in all 52 bodies; stable while the tissue settles (frames 0–50) |
-| Keyboard UI | plays "not even you" on the fitted head (motion scaled ×0.72): lips, chin and jaw move up to 19.9 mm, stable |
+| Measure                            | Result                                                                                                                                     |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Landmarks with depth               | 478/478 in each pose                                                                                                                       |
+| Left/right check                   | `LABELS_SWAPPED` (app mirroring; fitted with `--relabel`, OK after)                                                                    |
+| Neutral-face check                 | OK: lips closed (0.3–0.6 mm), eyelids 7–11.5 mm, phone within 15°                                                                       |
+| Start head                         | `base_human` (the lab head reshaped to an average human face)                                                                            |
+| Size against the lab head          | 71.9%                                                                                                                                      |
+| Alignment error, before reshaping  | 5.4 mm typical                                                                                                                             |
+| Skin to landmarks, after reshaping | 1.1 mm typical                                                                                                                             |
+| Skin to scan                       | 0.85 mm typical, 3.6 mm for 95%                                                                                                            |
+| Folded skin triangles              | 340 of 31,225 (745 before the human start head and the fixes below)                                                                        |
+| Eye and mouth openings             | 0.5 mm off the person's eyelids and inner lips                                                                                             |
+| Mouth                              | closed (lips 3.2 mm apart at the midline); front teeth 8.3 mm behind the lips                                                              |
+| Eyeballs                           | 24 mm, behind the lids                                                                                                                     |
+| Skin-to-skull depth                | 1.01× the lab head's                                                                                                                      |
+| In Maya                            | shows the fitted face exactly; polygons and UVs identical to the lab head in all 52 bodies; stable while the tissue settles (frames 0–50) |
+| Keyboard UI                        | plays "not even you" on the fitted head (motion scaled ×0.72): lips, chin and jaw move up to 19.9 mm, stable                              |
 
 **Second capture, same subject (`captures/s01/s01_20261110T212937Z_burst/`).** This was the first capture taken with the mirror fix and burst depth:
+
 - The left/right check is **OK** without `--relabel`, so the fix works on the phone.
 - 16 depth frames merged per pose lowered the face's depth roughness from 1.43 to 1.12 mm, and halved the flying pixels (0.58% → 0.28%), by `tools/compare_depth_noise.py`.
 
@@ -253,9 +255,9 @@ No license file has been added yet. Third-party software (MediaPipe, Autodesk Ma
 
 # 👨‍💻 Authors
 
-**William Huang** | Undergraduate Research Assistant | Simon Fraser University
-
 **Sophia Don Tranho** | Undergraduate Research Assistant | Simon Fraser University
+
+**William Huang** | Undergraduate Research Assistant | Simon Fraser University
 
 ---
 
