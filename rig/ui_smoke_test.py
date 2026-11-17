@@ -10,8 +10,10 @@ the neutral frame 14. Done twice:
             template_export/scenes/generic_ui.mb), motion unscaled
 
 Then each is simulated from frame 0 to the end. Pass: the sentence keyed the
-UI joints, every body stays finite, and no registered body moves faster per
-frame than SPEED_RATIO_MAX x the generic head does.
+UI joints, every body stays finite, no registered body moves faster per
+frame than SPEED_RATIO_MAX x the generic head does, and the mouth opens at
+least 70% as wide as the generic head's at this size (pipeline/mouth.py;
+tools/mouth_check.py repeats this later from the saved frames, with pictures).
 
 Runs the lab's UI code and reads its data on the lab share.
 
@@ -28,6 +30,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import config                                          # noqa: E402
 from core import io as cio                             # noqa: E402
+from pipeline import mouth                             # noqa: E402
 from rig import _maya as M                             # noqa: E402
 from rig import keyboard_ui as K                       # noqa: E402
 from rig.roundtrip_test import registered              # noqa: E402
@@ -107,16 +110,29 @@ def main():
         ratio = {k: vf[k] / max(vg[k], 1e-6) for k in vf if k in vg and registered(k)}
         bad = {k: r for k, r in ratio.items() if r > SPEED_RATIO_MAX}
         keyed = run.metrics["fitted"]["oor_01_keys_after_14"] > 0
+        # The mouth opens like the generic head's at this size (pipeline/mouth.py):
+        # a fit that pulled the mouth shut animated sealed and still passed the
+        # speed and finiteness checks.
+        lab_skin, faces = mouth.load_lab_mesh(SKIN)
+        mouth_rep = mouth.assess_frames(np.asarray(fit[SKIN], dtype=np.float64),
+                                        np.asarray(gen[SKIN], dtype=np.float64), faces,
+                                        mouth.mouth_parts(lab_skin, faces), scale)
+        mouth_ok = mouth_rep["verdict"] == "OK"
         run.metrics.update({"finite": bool(finite), "speed_ratio_vs_generic": ratio, "over_max": bad,
                             "skin_motion_max_mm": float(np.linalg.norm(fit[SKIN] - fit[SKIN][:1], axis=2).max()),
                             "generic_skin_motion_max_mm": float(np.linalg.norm(gen[SKIN] - gen[SKIN][:1], axis=2).max()),
-                            "pass": bool(finite and keyed and not bad)})
+                            "mouth": mouth_rep,
+                            "pass": bool(finite and keyed and not bad and mouth_ok)})
         top = sorted(ratio.items(), key=lambda kv: -kv[1])[:5]
         print("   keyed: {0} keys on oor_01 after frame 14; end frame {1}".format(
             run.metrics["fitted"]["oor_01_keys_after_14"], run.metrics["fitted"]["end_frame"]))
         print("   finite {0}; skin moves up to {1:.1f} mm (generic {2:.1f} mm); worst speed ratios {3}".format(
             finite, run.metrics["skin_motion_max_mm"], run.metrics["generic_skin_motion_max_mm"],
             [(k, round(r, 2)) for k, r in top]))
+        print("   mouth: widest opening {0:.0f} mm2, generic head at this size {1:.0f} mm2 ({2}) -> {3}".format(
+            mouth_rep["speech_opening_mm2"], mouth_rep["ref_speech_opening_mm2"],
+            "n/a" if mouth_rep["speech_ratio"] is None else "{0:.0%}".format(mouth_rep["speech_ratio"]),
+            mouth_rep["verdict"]))
         print("   ->", "PASS" if run.metrics["pass"] else "FAIL")
         if not run.metrics["pass"]:
             sys.exit(2)

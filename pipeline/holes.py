@@ -24,6 +24,11 @@ Depth at an eyelid margin or the lip line is the least reliable on the face
 (lashes, the wet eye, the dark mouth), so each target keeps the landmark's
 position across the face and takes its depth from the smoothed scan where a
 scan point lies within SNAP_MM of it.
+
+The mouth is the exception by default (mouth_gap_constraints): the rig rests
+with its lips apart and a neutral capture has them closed, so the hole keeps
+the lab head's resting opening, centred on the person's lip line, instead of
+being pulled shut onto the coinciding inner-lip contours.
 """
 
 import numpy as np
@@ -115,6 +120,69 @@ def constraints(V, F, landmarks, valid, cloud=None, n=N_PER_EDGE, ref_skin=None,
             idx.extend(edge)
             tgt.extend(target)
     return np.array(idx, dtype=np.int64), np.array(tgt, dtype=np.float64)
+
+
+def gap_targets(seam, ref_seam, ref_edge_up, ref_edge_lo):
+    """Targets for the mouth hole's upper and lower edges: the reference head's
+    edges relative to its own lip line (ref edge - ref seam), laid on the
+    person's lip line. All (n,3), sampled the same way. -> (upper, lower)."""
+    return seam + (ref_edge_up - ref_seam), seam + (ref_edge_lo - ref_seam)
+
+
+def mouth_gap_constraints(V, F, landmarks, valid, gap_ref, cloud=None, fixture=None, n=N_PER_EDGE, edges=None):
+    """The mouth hole keeps the rig's resting opening, centred on the person's lips.
+
+    The lab rig rests with the mouth slightly open (hole edges 8.3 mm apart at
+    the middle) and its phoneme motion starts from there. A neutral capture has
+    closed lips, so its inner-lip contours coincide, and pulling the edges onto
+    them (constraints()) shut the hole and fused the lip muscle. Instead the
+    person's lip line (midway between MediaPipe's inner-lip contours, depth from
+    the scan) takes the reference head's edges as they sit around its own lip
+    line (the fixture's vertices for the same contours).
+
+    gap_ref: the reference skin (the lab head) at the subject's size, same
+    vertex order as V. -> (vertex indices, targets (k,3), person's lip line
+    (n,3) or None if the contours or their fixture vertices are missing)."""
+    empty = (np.zeros(0, dtype=np.int64), np.zeros((0, 3)), None)
+    if fixture is None:
+        return empty
+    if edges is None:
+        edges, _x0 = template_edges(V, F)
+    up_chain, lo_chain = edges["mouth"]
+    ids_u, ids_l = list(mp.LIPS_INNER_UPPER), list(mp.LIPS_INNER_LOWER)   # both run 78 -> 308, subject's right first
+    if not (valid[ids_u].all() and valid[ids_l].all()):
+        return empty
+    vu = [fixture["vertex"][i] for i in ids_u]
+    vl = [fixture["vertex"][i] for i in ids_l]
+    if any(v is None for v in vu + vl):
+        return empty
+    seam = 0.5 * (_resample(landmarks[ids_u], n) + _resample(landmarks[ids_l], n))
+    if cloud is not None and len(cloud):
+        d, j = cKDTree(cloud).query(seam)
+        near = d < SNAP_MM
+        seam[near, 2] = cloud[j[near], 2]
+    ref_seam = 0.5 * (_resample(gap_ref[vu], n) + _resample(gap_ref[vl], n))
+    eu, el = _resample_idx(V, up_chain, n), _resample_idx(V, lo_chain, n)
+    tu, tl = gap_targets(seam, ref_seam, gap_ref[eu], gap_ref[el])
+    return np.r_[eu, el], np.r_[tu, tl], seam
+
+
+def drop_seam_band(cloud, seam, band_mm=2.5, depth_mm=12.0):
+    """Keep mask for scan points: False within band_mm (across the face, x-y)
+    of the person's lip line and within depth_mm of it in z. That strip is
+    where closed lips touch; matched to the rig's parted lips it would pull
+    them shut."""
+    cloud = np.asarray(cloud, dtype=np.float64)
+    best = np.full(len(cloud), np.inf)
+    if seam is None or not len(cloud):
+        return np.ones(len(cloud), dtype=bool)
+    for a, b in zip(seam[:-1], seam[1:]):
+        ab = b - a
+        t = np.clip(((cloud - a) @ ab) / max(float(ab @ ab), 1e-12), 0.0, 1.0)
+        off = cloud - (a + t[:, None] * ab)
+        dxy = np.linalg.norm(off[:, :2], axis=1)
+        best = np.minimum(best, np.where(np.abs(off[:, 2]) < depth_mm, dxy, np.inf))
+    return best >= band_mm
 
 
 def forward_shift(X0, X, idx):

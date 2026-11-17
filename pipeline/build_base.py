@@ -9,10 +9,11 @@ result, leaves each person's fit a much smaller change.
 
 The average face is MediaPipe's canonical mesh, rendered as a clean synthetic
 guided capture (pipeline/synthetic.py: front and +/-30 deg turns, no noise).
-Its lips are parted (5.8 mm), so the fit runs in base mode: lip landmarks,
-lip-region scan data and the mouth opening are left out and the lab head's
-closed mouth is kept. The eyeballs come out at 24 mm (fit_subject places
-them). Same meshes and vertex order as the lab head, so the fixture, the
+Its lips are parted (5.8 mm), so the fit runs in base mode: lip landmarks and
+lip-region scan data are left out, and the mouth hole keeps the lab head's
+own resting opening, centred between the average face's lips (before
+2026-11-17 the hole was left free and drifted open to 9.1 mm; rebuild). The
+eyeballs come out at 24 mm (fit_subject places them). Same meshes and vertex order as the lab head, so the fixture, the
 importance map and the rig all still apply.
 
     mayapy pipeline/build_base.py      # -> template_export/subjects/base_human/

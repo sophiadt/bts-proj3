@@ -4,9 +4,10 @@
       -> mirror gate           pipeline/mirror_check.py   (stops unless OK, or --relabel / --force)
       -> views merged          pipeline/merge_views.py    (rigid per view + ICP, fit frame)
       -> uniform scale s       every body and joint scaled by s about the template origin
-      -> skin non-rigid fit    pipeline/nonrigid.py       (fixture landmarks + dense cloud, holes masked)
+      -> skin non-rigid fit    pipeline/nonrigid.py       (fixture landmarks + dense cloud, holes masked;
+                                                           the mouth keeps the rig's resting opening)
       -> volumetric warp       pipeline/volumetric.py     (tissue full field, bones similarity, joints)
-      -> checks                flips, skin-to-skull thickness, bone conformity
+      -> checks                flips, skin-to-skull thickness, bone conformity, mouth (pipeline/mouth.py)
       -> template_export/subjects/<id>/<body>.npz (rest_vertices) + joints.npz + report
 
 The skin is fitted in output space (what the camera can see) and the same
@@ -17,7 +18,7 @@ Then, in Maya:
     mayapy rig/write_rest.py template_export/subjects/<id> --save <id>
     mayapy rig/sim_check.py template_export/scenes/<id>.mb --subject <id>
 
-    mayapy pipeline/fit_subject.py CAPTURE [--id NAME] [--relabel | --no-relabel] [--force]
+    mayapy pipeline/fit_subject.py CAPTURE [--id NAME] [--relabel | --no-relabel] [--force] [--close-mouth]
 
 CAPTURE is a capture id (looked up under captures/) or a folder; the subject
 id defaults to the capture id. A capture.json recording `labels: swapped`
@@ -39,6 +40,7 @@ from pipeline import canonical as mp                   # noqa: E402
 from pipeline import capture as cap                    # noqa: E402
 from pipeline import fixture as fx                     # noqa: E402
 from pipeline import holes, importance, merge_views, mirror_check, neutral_check, nonrigid, volumetric  # noqa: E402
+from pipeline import mouth as mouth_mod                # noqa: E402
 from core.similarity import apply_similarity                # noqa: E402
 from core.geometry import ray_hit_distance as geo_ray       # noqa: E402
 
@@ -78,6 +80,12 @@ UNSEEN_STIFFNESS = 4.0
 # 0.2 it moves at most 5 mm, only where a view adds data (388 folds).
 UNSEEN_TETHER = 0.2
 BASE_SUBJECT = "base_human"
+# The mouth hole: "gap" keeps the lab rig's resting opening on the person's lip
+# line (pipeline/holes.mouth_gap_constraints); "contours" is the old pull onto
+# the inner-lip contours, which on a closed-mouth capture shut the hole, fused
+# the lip muscle's halves and left the animated mouth sealed (first two
+# captures: speech opened 32-48% of the lab head's; with "gap", 88-96%).
+MOUTH_GAP, MOUTH_CONTOURS = "gap", "contours"
 
 
 def load_template_bodies(src_dir=None):
@@ -133,13 +141,175 @@ def relabel(views):
         v.unreliable = v.unreliable[perm]
 
 
+def fit_skin(V, F, mv, fixture, s, gap_ref=None, base_mode=False, use_anchors=False, mouth=MOUTH_GAP,
+             verbose=True):
+    """Step 3: the non-rigid skin fit in output space.
+
+    V: the start head's skin (unscaled), mv: merge_views.merge() of the capture
+    onto it, s: its scale. gap_ref: the lab head's skin at the subject's size
+    (mouth="gap"). Needs only the skin, so tools/mouth_check.py --preview runs
+    it without the other bodies. -> (X, X0, ctx); ctx holds the regions, the
+    masks the later steps use, and metrics {"openings", "nonrigid"}."""
+    from scipy.spatial import cKDTree
+    M = {}
+    regions = fx.skin_regions(V, F)
+    region_s, rim_dist, _loops, _an = regions
+    data_mask = rim_dist > fx.HOLE_ADJ_MM
+    lip_region = np.isin(region_s, ["lip_upper", "lip_lower"])
+    if base_mode:
+        data_mask &= ~lip_region
+    # Landmark targets: not the face oval (silhouette depth is biased even
+    # when it passes the edge test; the dense cloud defines the outline),
+    # not what the rigid fit rejected as an outlier.
+    skip = set(mp.FACE_OVAL) | set(mv["per_view"][mv["primary"]]["rejected"])
+    if base_mode:
+        skip |= {i for i, r in enumerate(fixture["region"]) if r in ("lip_upper", "lip_lower")}
+        skip |= {mp.MOUTH_R, mp.MOUTH_L, 78, 308}
+    li, vi, w = [], [], []
+    for i, (v, wt) in enumerate(zip(fixture["vertex"], fixture["weight"])):
+        if v is not None and mv["valid"][i] and fixture["weight_class"][i] != "zero" and i not in skip:
+            li.append(i); vi.append(v); w.append(max(wt, 0.1))
+    li, vi, w = np.array(li), np.array(vi), np.array(w) * LM_WEIGHT
+    X0 = s * V
+    cloud_s = nonrigid.denoise_cloud(mv["cloud"], DENOISE_K)
+    cloud_n, cloud_raw = mv["cloud_normals"], mv["cloud"]
+
+    # Openings: the eye holes follow the person's eyelid contours, keeping the
+    # template's own edge-behind-margin offset (pipeline/holes.py). The mouth
+    # keeps the rig's resting opening on the person's lip line ("gap"), or is
+    # pulled onto the inner-lip contours ("contours", the old behaviour).
+    finite = np.isfinite(mv["landmarks"]).all(axis=1)
+    seam = None
+    if mouth == MOUTH_GAP:
+        hidx, htgt = holes.constraints(V, F, mv["landmarks"], finite, cloud_s, ref_skin=X0, fixture=fixture,
+                                       only=("eye_r", "eye_l"))
+        midx, mtgt, seam = holes.mouth_gap_constraints(V, F, mv["landmarks"], finite, gap_ref, cloud_s, fixture)
+        hidx, htgt = np.r_[hidx, midx], np.concatenate([htgt.reshape(-1, 3), mtgt.reshape(-1, 3)])
+        if seam is not None:
+            keep = holes.drop_seam_band(cloud_s, seam)
+            cloud_s, cloud_n, cloud_raw = cloud_s[keep], cloud_n[keep], cloud_raw[keep]
+            M["mouth_seam_points_dropped"] = int((~keep).sum())
+        elif verbose:
+            print("note: inner-lip landmarks missing; the mouth hole keeps the start head's shape")
+    elif mouth == MOUTH_CONTOURS:
+        hidx, htgt = holes.constraints(V, F, mv["landmarks"], finite, cloud_s, ref_skin=X0, fixture=fixture,
+                                       only=("eye_r", "eye_l") if base_mode else None)
+    else:
+        raise ValueError("mouth must be {0!r} or {1!r}".format(MOUTH_GAP, MOUTH_CONTOURS))
+    lm_i = np.r_[vi, hidx]
+    lm_p = np.r_[mv["landmarks"][li], htgt] if len(hidx) else mv["landmarks"][li]
+    lm_w = np.r_[w, np.full(len(hidx), HOLE_WEIGHT)]
+    # Where the face moves and creases (pipeline/importance.py), the skin
+    # may take more detail: shape-keeping stiffness / (1 + gain * importance).
+    reg_w = np.ones(len(V))
+    data_w = None
+    imp_file = config.template_export_dir() / importance.IMPORTANCE_NPZ
+    if imp_file.exists():
+        imp = importance.load(imp_file)
+        reg_w = 1.0 / (1.0 + IMPORTANCE_GAIN * imp["importance"])
+        if use_anchors:
+            data_w = np.ones(len(V))
+            data_w[imp["anchors"]] = ANCHOR_DATA_WEIGHT
+    elif verbose:
+        print("note: no", imp_file.name, "- uniform stiffness (run pipeline/importance.py)")
+    # Skin the camera never saw keeps the start shape's smooth form.
+    # Ramped, not a step: a 1x-to-4x step at the scan's edge left a crease down
+    # each cheek. Full stiffness only well away from any scan point.
+    dist = cKDTree(cloud_s).query(X0)[0] if len(cloud_s) else np.full(len(V), np.inf)
+    ramp = np.clip((dist - UNSEEN_MM) / UNSEEN_MM, 0.0, 1.0)
+    unseen = ramp > 0.5
+    reg_w = reg_w * (1.0 + (UNSEEN_STIFFNESS - 1.0) * ramp)
+    # Stiffness alone lets the unseen side of the head tilt freely about the
+    # face's edge; a small tilt there swung it up to 45 mm and folded it
+    # over the cheek. A weak pull toward the start shape holds it.
+    tether = np.flatnonzero(ramp > 0)
+    lm_i = np.r_[lm_i, tether]
+    lm_p = np.r_[lm_p, X0[tether]]
+    lm_w = np.r_[lm_w, UNSEEN_TETHER * ramp[tether]]
+    X, nr = nonrigid.fit(X0, F, lm_idx=lm_i, lm_pts=lm_p, lm_w=lm_w,
+                         cloud=cloud_s, cloud_n=cloud_n, oriented=True,
+                         data_mask=data_mask, data_w=data_w, reg_w=reg_w, verbose=False, **NONRIGID)
+    v13, v14 = fixture["vertex"][13], fixture["vertex"][14]
+    M["openings"] = {"n_constraints": int(len(hidx)), "mouth": mouth,
+                     "off_before_mm": holes.alignment_error(X0, hidx, htgt),
+                     "off_after_mm": holes.alignment_error(X, hidx, htgt),
+                     "edges_forward_mm": holes.forward_shift(X0, X, hidx),
+                     "lip_gap_mm": float(np.linalg.norm(X[v13] - X[v14])),
+                     "lip_gap_start_mm": float(np.linalg.norm(X0[v13] - X0[v14])),
+                     "unseen_skin_frac": float(unseen.mean()),
+                     "importance_stiffness": imp_file.exists(), "anchors_weighted": data_w is not None}
+    if verbose and len(hidx):
+        o = M["openings"]
+        print("openings: {0:.2f} mm -> {1:.2f} mm off their targets; edges moved {2:+.1f} mm toward the camera; "
+              "lip gap {3:.1f} mm (start {4:.1f}); mouth: {5}".format(
+                  o["off_before_mm"], o["off_after_mm"], o["edges_forward_mm"], o["lip_gap_mm"],
+                  o["lip_gap_start_mm"], mouth))
+    lm_res = np.linalg.norm(X[vi] - mv["landmarks"][li], axis=1)
+    cd = nonrigid.cloud_to_mesh_distance(cloud_raw, X, F) if len(cloud_raw) else np.zeros(0)
+    covered = np.isfinite(cd)
+    near = cKDTree(cloud_raw).query(X, distance_upper_bound=COVERAGE_MM)[0] if len(cloud_raw) else np.full(len(X), np.inf)
+    face_region = data_mask & (X0[:, 2] < np.percentile(X0[:, 2], 60))
+    M["nonrigid"] = {"history": nr["history"],
+                     "landmark_residual_median_mm": float(np.median(lm_res)),
+                     "landmark_residual_p95_mm": float(np.percentile(lm_res, 95)),
+                     "cloud_to_skin_median_mm": float(np.median(cd[covered])) if covered.any() else None,
+                     "cloud_to_skin_p95_mm": float(np.percentile(cd[covered], 95)) if covered.any() else None,
+                     "cloud_points_off_skin_frac": float(1 - covered.mean()) if len(cd) else None,
+                     "skin_coverage_frac": float(np.isfinite(near[face_region]).mean()),
+                     "skin_disp_max_mm": float(np.linalg.norm(X - X0, axis=1).max())}
+    if verbose:
+        n = M["nonrigid"]
+        print("non-rigid: landmarks median {0:.2f} p95 {1:.2f} mm; cloud->skin median {2} p95 {3}; coverage {4:.0%}".format(
+            n["landmark_residual_median_mm"], n["landmark_residual_p95_mm"],
+            None if n["cloud_to_skin_median_mm"] is None else round(n["cloud_to_skin_median_mm"], 2),
+            None if n["cloud_to_skin_p95_mm"] is None else round(n["cloud_to_skin_p95_mm"], 2),
+            n["skin_coverage_frac"]))
+    ctx = {"regions": regions, "loops": _loops, "data_mask": data_mask, "face_region": face_region, "near": near,
+           "seam": seam, "metrics": M}
+    return X, X0, ctx
+
+
+def mouth_report(X, F, parts, scale_vs_lab, muscle=None, mouth_mode=MOUTH_GAP, verbose=True):
+    """pipeline/mouth.assess of a fitted skin (and its warped lip muscle)
+    against the lab head at the same size, with the lab head's own speech
+    motion added to both (template_export/anim_ui_generic.npz, else the lab
+    skin's sequence). parts: mouth.mouth_parts of the start head."""
+    lab_skin, _f = mouth_mod.load_lab_mesh(fx.SKIN)
+    ref_muscle = None
+    if muscle is not None:
+        try:
+            ref_muscle = scale_vs_lab * mouth_mod.load_lab_mesh(mouth_mod.LIP_MUSCLE)[0]
+        except (OSError, KeyError):
+            muscle = None
+    motion, src = mouth_mod.lab_speech_motion()
+    rep = mouth_mod.assess(X, F, parts, scale_vs_lab * lab_skin, muscle=muscle, ref_muscle=ref_muscle,
+                           motion=motion, motion_scale=scale_vs_lab)
+    rep.update({"mode": mouth_mode, "motion_source": src})
+    if verbose:
+        fmt = lambda v, p=1: "n/a" if v is None else "{0:.{1}f}".format(v, p)
+        print("mouth ({0}): edge gap {1} mm (lab head {2}); opening at rest {3} mm2 (lab {4}), speaking {5} mm2 "
+              "(lab {6}) = {7}; lip muscle gap median {8} mm (lab {9}), {10} slices closing "
+              "-> {11}".format(
+                  mouth_mode, fmt(rep["edge_gap_mm"]), fmt(rep["ref_edge_gap_mm"]), fmt(rep["rest_opening_mm2"], 0),
+                  fmt(rep["ref_rest_opening_mm2"], 0), fmt(rep.get("speech_opening_mm2"), 0),
+                  fmt(rep.get("ref_speech_opening_mm2"), 0),
+                  "n/a" if rep["speech_ratio"] is None else "{0:.0%}".format(rep["speech_ratio"]),
+                  fmt(rep.get("muscle_gap_median_mm"), 2), fmt(rep.get("ref_muscle_gap_median_mm"), 2),
+                  rep.get("muscle_slices_closing", "n/a"), rep["verdict"]))
+        if rep["verdict"] != "OK":
+            print("WARNING: the mouth may not open when animated ({0}); see tools/mouth_check.py".format(rep["verdict"]))
+    return rep
+
+
 def fit(capture_dir, subject_id, out_root=None, do_relabel=False, force=False, use_anchors=False,
-        base=None, base_mode=False, verbose=True):
+        base=None, base_mode=False, mouth=MOUTH_GAP, verbose=True):
     """base: start from template_export/subjects/<base> (the human base head)
     instead of the lab head. base_mode: building that base from MediaPipe's
-    average face -- its lips are parted (5.8 mm), so lip landmarks, lip-region
-    scan data and the mouth opening are left out and the lab head's closed
-    mouth is kept."""
+    average face -- its lips are parted (5.8 mm), so lip landmarks and
+    lip-region scan data are left out. mouth: MOUTH_GAP keeps the lab rig's
+    resting mouth opening on the person's lip line (also in base mode);
+    MOUTH_CONTOURS is the old pull onto the inner-lip contours (in base mode,
+    the mouth hole left free)."""
     capture_dir = Path(capture_dir)
     out_dir = Path(out_root or config.template_export_dir() / "subjects") / subject_id
     with cio.RunDir(subject_id, "fit", "pipeline/fit_subject.py") as run:
@@ -200,103 +370,15 @@ def fit(capture_dir, subject_id, out_root=None, do_relabel=False, force=False, u
         scaled = {k: {"out": s * b["out"], "rest": s * b["rest"]} for k, b in bodies.items()}
         sjoints = {k: s * p for k, p in joints.items()}
 
-        # 3. non-rigid skin fit in output space
-        region_s, rim_dist, _loops, _an = fx.skin_regions(V, F)
-        data_mask = rim_dist > fx.HOLE_ADJ_MM
-        lip_region = np.isin(region_s, ["lip_upper", "lip_lower"])
-        if base_mode:
-            data_mask &= ~lip_region
-        # Landmark targets: not the face oval (silhouette depth is biased even
-        # when it passes the edge test; the dense cloud defines the outline),
-        # not what the rigid fit rejected as an outlier.
-        skip = set(mp.FACE_OVAL) | set(mv["per_view"][mv["primary"]]["rejected"])
-        if base_mode:
-            skip |= {i for i, r in enumerate(fixture["region"]) if r in ("lip_upper", "lip_lower")}
-            skip |= {mp.MOUTH_R, mp.MOUTH_L, 78, 308}
-        li, vi, w = [], [], []
-        for i, (v, wt) in enumerate(zip(fixture["vertex"], fixture["weight"])):
-            if v is not None and mv["valid"][i] and fixture["weight_class"][i] != "zero" and i not in skip:
-                li.append(i); vi.append(v); w.append(max(wt, 0.1))
-        li, vi, w = np.array(li), np.array(vi), np.array(w) * LM_WEIGHT
-        X0 = scaled[fx.SKIN]["out"]
-        cloud_s = nonrigid.denoise_cloud(mv["cloud"], DENOISE_K)
-
-        # Openings: the eye and mouth holes follow the person's eyelid and
-        # inner-lip contours, keeping the template's own edge-behind-margin
-        # offset (pipeline/holes.py).
-        finite = np.isfinite(mv["landmarks"]).all(axis=1)
-        hidx, htgt = holes.constraints(V, F, mv["landmarks"], finite, cloud_s, ref_skin=X0, fixture=fixture,
-                                       only=("eye_r", "eye_l") if base_mode else None)
-        lm_i = np.r_[vi, hidx]
-        lm_p = np.r_[mv["landmarks"][li], htgt] if len(hidx) else mv["landmarks"][li]
-        lm_w = np.r_[w, np.full(len(hidx), HOLE_WEIGHT)]
-        # Where the face moves and creases (pipeline/importance.py), the skin
-        # may take more detail: shape-keeping stiffness / (1 + gain * importance).
-        reg_w = np.ones(len(V))
-        data_w = None
-        imp_file = config.template_export_dir() / importance.IMPORTANCE_NPZ
-        if imp_file.exists():
-            imp = importance.load(imp_file)
-            reg_w = 1.0 / (1.0 + IMPORTANCE_GAIN * imp["importance"])
-            if use_anchors:
-                data_w = np.ones(len(V))
-                data_w[imp["anchors"]] = ANCHOR_DATA_WEIGHT
-        elif verbose:
-            print("note: no", imp_file.name, "- uniform stiffness (run pipeline/importance.py)")
-        # Skin the camera never saw keeps the start shape's smooth form.
-        from scipy.spatial import cKDTree
-        # Ramped, not a step: a 1x-to-4x step at the scan's edge left a crease down
-        # each cheek. Full stiffness only well away from any scan point.
-        dist = cKDTree(cloud_s).query(X0)[0] if len(cloud_s) else np.full(len(V), np.inf)
-        ramp = np.clip((dist - UNSEEN_MM) / UNSEEN_MM, 0.0, 1.0)
-        unseen = ramp > 0.5
-        reg_w = reg_w * (1.0 + (UNSEEN_STIFFNESS - 1.0) * ramp)
-        # Stiffness alone lets the unseen side of the head tilt freely about the
-        # face's edge; a small tilt there swung it up to 45 mm and folded it
-        # over the cheek. A weak pull toward the start shape holds it.
-        tether = np.flatnonzero(ramp > 0)
-        lm_i = np.r_[lm_i, tether]
-        lm_p = np.r_[lm_p, X0[tether]]
-        lm_w = np.r_[lm_w, UNSEEN_TETHER * ramp[tether]]
-        X, nr = nonrigid.fit(X0, F, lm_idx=lm_i, lm_pts=lm_p, lm_w=lm_w,
-                             cloud=cloud_s, cloud_n=mv["cloud_normals"], oriented=True,
-                             data_mask=data_mask, data_w=data_w, reg_w=reg_w, verbose=False, **NONRIGID)
-        v13, v14 = fixture["vertex"][13], fixture["vertex"][14]
-        M["openings"] = {"n_constraints": int(len(hidx)),
-                         "off_before_mm": holes.alignment_error(X0, hidx, htgt),
-                         "off_after_mm": holes.alignment_error(X, hidx, htgt),
-                         "edges_forward_mm": holes.forward_shift(X0, X, hidx),
-                         "lip_gap_mm": float(np.linalg.norm(X[v13] - X[v14])),
-                         "lip_gap_start_mm": float(np.linalg.norm(X0[v13] - X0[v14])),
-                         "unseen_skin_frac": float(unseen.mean()),
-                         "importance_stiffness": imp_file.exists(), "anchors_weighted": data_w is not None}
-        if verbose and len(hidx):
-            o = M["openings"]
-            print("openings: {0:.2f} mm -> {1:.2f} mm off the eyelids/lips; edges moved {2:+.1f} mm toward the camera; "
-                  "lip gap {3:.1f} mm (start {4:.1f})".format(o["off_before_mm"], o["off_after_mm"],
-                                                              o["edges_forward_mm"], o["lip_gap_mm"], o["lip_gap_start_mm"]))
+        # 3. non-rigid skin fit in output space. The mouth keeps the lab rig's
+        # resting opening, at this subject's size, on the person's lip line.
+        gap_ref = M["scale_vs_lab_head"] * mouth_mod.load_lab_mesh(fx.SKIN)[0] if mouth == MOUTH_GAP else None
+        M["mouth_mode"] = mouth
+        X, X0, skin_ctx = fit_skin(V, F, mv, fixture, s, gap_ref=gap_ref, base_mode=base_mode,
+                                   use_anchors=use_anchors, mouth=mouth, verbose=verbose)
+        M.update(skin_ctx["metrics"])
+        _loops, face_region, near = skin_ctx["loops"], skin_ctx["face_region"], skin_ctx["near"]
         d_skin = X - X0
-        lm_res = np.linalg.norm(X[vi] - mv["landmarks"][li], axis=1)
-        cd = nonrigid.cloud_to_mesh_distance(mv["cloud"], X, F) if len(mv["cloud"]) else np.zeros(0)
-        covered = np.isfinite(cd)
-        from scipy.spatial import cKDTree
-        near = cKDTree(mv["cloud"]).query(X, distance_upper_bound=COVERAGE_MM)[0] if len(mv["cloud"]) else np.full(len(X), np.inf)
-        face_region = data_mask & (X0[:, 2] < np.percentile(X0[:, 2], 60))
-        M["nonrigid"] = {"history": nr["history"],
-                         "landmark_residual_median_mm": float(np.median(lm_res)),
-                         "landmark_residual_p95_mm": float(np.percentile(lm_res, 95)),
-                         "cloud_to_skin_median_mm": float(np.median(cd[covered])) if covered.any() else None,
-                         "cloud_to_skin_p95_mm": float(np.percentile(cd[covered], 95)) if covered.any() else None,
-                         "cloud_points_off_skin_frac": float(1 - covered.mean()) if len(cd) else None,
-                         "skin_coverage_frac": float(np.isfinite(near[face_region]).mean()),
-                         "skin_disp_max_mm": float(np.linalg.norm(d_skin, axis=1).max())}
-        if verbose:
-            n = M["nonrigid"]
-            print("non-rigid: landmarks median {0:.2f} p95 {1:.2f} mm; cloud->skin median {2} p95 {3}; coverage {4:.0%}".format(
-                n["landmark_residual_median_mm"], n["landmark_residual_p95_mm"],
-                None if n["cloud_to_skin_median_mm"] is None else round(n["cloud_to_skin_median_mm"], 2),
-                None if n["cloud_to_skin_p95_mm"] is None else round(n["cloud_to_skin_p95_mm"], 2),
-                n["skin_coverage_frac"]))
 
         # 4a. bones from skin depth: skull and jaw placed so the template's
         # skin-to-bone depth (at subject scale) holds under the fitted skin,
@@ -430,6 +512,14 @@ def fit(capture_dir, subject_id, out_root=None, do_relabel=False, force=False, u
                                                          t["ratio_median"], t["n_negative"], t["n_below_30pct"]))
             print("flipped/collapsed faces:", flips or "none")
 
+        # 4c. the mouth still opens like the lab head's: hole edges, opening at
+        # rest and with the lab head's speech motion added, lip muscle's halves
+        # apart (pipeline/mouth.py; the gate on the simulated animation is
+        # tools/mouth_check.py).
+        parts = mouth_mod.mouth_parts(V, F, regions=skin_ctx["regions"])
+        M["mouth"] = mouth_report(X, F, parts, M["scale_vs_lab_head"], muscle=new_rest.get(mouth_mod.LIP_MUSCLE),
+                                  mouth_mode=mouth, verbose=verbose)
+
         # 5. write
         out_dir.mkdir(parents=True, exist_ok=True)
         for k, r in new_rest.items():
@@ -463,6 +553,9 @@ def main():
                     help="start head: a subject under template_export/subjects (default: {0} if it exists, "
                          "else the lab head)".format(BASE_SUBJECT))
     ap.add_argument("--lab-head", action="store_true", help="start from the lab head even if a base head exists")
+    ap.add_argument("--close-mouth", action="store_true",
+                    help="old behaviour: pull the mouth hole onto the inner-lip contours (seals a closed-mouth "
+                         "capture; for comparison only)")
     args = ap.parse_args()
     base = args.base
     if base is None and not args.lab_head and (config.template_export_dir() / "subjects" / BASE_SUBJECT).exists():
@@ -474,7 +567,7 @@ def main():
         relabel_flag = True
         print("capture.json records labels: swapped (a reviewed mirror check) -> relabelling; --no-relabel to skip")
     fit(capture, args.id or cap.capture_id(capture), do_relabel=relabel_flag, force=args.force,
-        use_anchors=args.anchors, base=base)
+        use_anchors=args.anchors, base=base, mouth=MOUTH_CONTOURS if args.close_mouth else MOUTH_GAP)
 
 
 if __name__ == "__main__":

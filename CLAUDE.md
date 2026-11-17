@@ -34,6 +34,7 @@ Facts the brief did not have:
   - *No landmark fill from turned views.* Most fills came from one view, unchecked; the set changed with the views taken, and swung the unseen side of the head up to 45 mm into a crease down the cheek. Turned views give dense depth only, after a smooth bend onto the front where they overlap (1.75 → 1.3 mm).
   - *Unseen skin is tethered* (weight 0.2) to the start shape: without it the back of the head moved 14 mm with the choice of views.
   - *Tried and rejected:* two-step fit (thin-plate warp from landmarks, then scan: ~5,000 folds; landmark-only surface step: 3,500+), a grazing-angle filter on turned views (folds 498 → 686), point-to-plane matching (kept; no measurable change).
+- **The mouth keeps the rig's resting gap** (2026-11-17). The lab rig rests with its lips apart: mouth-hole edges 8.3 mm apart at the middle, ~272 mm² of the hole visible from the front, the lip muscle's (OrbicularisOris) halves ~2.5 mm apart; its phoneme motion starts from there. Captures have closed lips, so pulling the hole onto MediaPipe's inner-lip contours (which then coincide) shut it: edges 1.2–1.4 mm apart, the lip muscle's halves squeezed together (Ziva rebuilds tets from that shape, self-collision off), and `capture_01` animated with a sealed mouth that `sim_check` and `ui_smoke_test` both passed. Now `holes.mouth_gap_constraints` lays the lab head's gap (× `scale_vs_lab_head`) on the person's lip line, and the scan's lip-contact strip (±2.5 mm) is dropped. Skin-only preview on both captures: opening when speaking 39–49% → 82–94% of the lab head's, lip muscle no longer closing; at rest the lips show ~2 mm apart, as on the lab head. `--close-mouth` gives the old pull, for comparison only. `pipeline/mouth.py` measures it; `ui_smoke_test` and `tools/mouth_check.py` gate it. `fit_subject.fit_skin` is the skin step alone, so `tools/mouth_check.py --preview` runs it off the workstation. `base_human` must be rebuilt (base mode keeps the gap too).
 - **Keyboard UI** lives in the lab's repo (`C:\Users\zpa18\a3-stochastic-V1\…\h99-UI-mayascipt-V1_comsciV1.py`); don't edit it. `rig/keyboard_ui.py` runs it on a fitted head from an in-memory copy:
   - phoneme displacements scaled by the fit's scale against the lab head (`scale_vs_lab_head`, not the scale against `base_human`; jaw rotation [900:903] not scaled);
   - feedback control's neutral swapped for the fitted frame-14 joints;
@@ -62,11 +63,13 @@ $MP pipeline/canonical.py              # MediaPipe canonical mesh out of face_la
 $MP pipeline/fixture.py                # config/landmark_to_vertex.json (committed, never per subject)
 python tools/ingest_capture.py         # AirDropped zips in captures/_inbox/ -> captures/<subject>/<capture_id>/ (any Python)
 $MP pipeline/mirror_check.py ID        # STOP: a person reviews the verdict before any app change; then --record
+python tools/mouth_check.py --preview ID --compare   # any machine with the lab skin: skin-only fit + mouth check first
 $MP pipeline/fit_subject.py ID         # ID = capture id; output name defaults to it (--id overrides)
 $MP rig/write_rest.py template_export/subjects/ID --save ID --ui-ready
 $MP rig/sim_check.py template_export/scenes/ID.mb --subject template_export/subjects/ID
 $MP tools/render_fit.py ID              # pictures + animation GIFs -> template_export/subjects/ID/views
-$MP rig/ui_smoke_test.py ID             # keyboard UI plays "not even you" on the fitted head (runs the lab's code)
+$MP rig/ui_smoke_test.py ID             # keyboard UI plays "not even you" on the fitted head (runs the lab's code); fails a shut mouth
+$MP tools/mouth_check.py ID             # mouth opening vs the lab head from the saved UI frames + pictures (no licence needed)
 $MP pipeline/importance.py              # once, after the first UI test: skin importance map + Poisson-disk anchors
 $MP pipeline/build_base.py              # once (and after fit changes): base_human, the start head of every fit
 # Maya GUI: exec(open(r"C:\Users\syd3\bts-proj3\rig\keyboard_ui_fitted.py").read())
