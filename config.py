@@ -71,7 +71,8 @@ TURN_FOR_PREFIX = {"left_": "subject_left", "right_": "subject_right"}
 
 
 def template_export_dir():
-    """This machine's fresh exports (gitignored). $BTS_TEMPLATE_EXPORT overrides."""
+    """The lab head exports and fitted subjects (committed, apart from the Maya
+    scenes in scenes/). $BTS_TEMPLATE_EXPORT overrides."""
     env = os.environ.get("BTS_TEMPLATE_EXPORT")
     return Path(env) if env else TEMPLATE_EXPORT_DIR
 
@@ -79,9 +80,8 @@ def template_export_dir():
 def lab_data_dir():
     """Directory holding the lab template .npz exports.
 
-    The lab data is not licensed for redistribution, so it is never committed:
-    $BTS_LAB_DATA, else this machine's fresh export (template_export/, from
-    rig/export_rest.py) if present, else ../bts-proj1/data/lab.
+    $BTS_LAB_DATA, else template_export/ (from rig/export_rest.py, committed)
+    if present, else ../bts-proj1/data/lab (an older export: 5 meshes, 107 frames).
     """
     env = os.environ.get("BTS_LAB_DATA")
     if env:

@@ -55,11 +55,12 @@ bts-proj3/
 ├── core/, checks/                       shared geometry, IO and template measurements
 ├── config/                              landmark map, MediaPipe canonical face, template registry
 ├── tests/                               pytest
+├── template_export/                     lab head exports, fitted subjects and their pictures (Maya scenes not committed)
 ├── v68 neutral v13.8 after housekeeping.mb   the lab head scene (Git LFS)
 └── CLAUDE.md                            measured facts about the lab rig, run order
 ```
 
-Generated files go to `template_export/` and `runs/`; both are git-ignored apart from each run's `metrics.json`.
+Generated files go to `template_export/` and `runs/`. `template_export/` is committed (the lab head exports, each fitted subject and its pictures) apart from its Maya scenes, which are too big for GitHub and are rebuilt by `rig/write_rest.py`. From `runs/` only each run's `metrics.json` is committed.
 
 **Not in this repo:** the keyboard/piano animation UI and its phoneme data are in the lab's `a3-stochastic-V1` repo (`C:\Users\zpa18\a3-stochastic-V1`) and on the lab share. `rig/keyboard_ui_fitted.py` runs that UI on a fitted head without changing it.
 

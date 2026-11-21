@@ -57,7 +57,7 @@ Facts the brief did not have:
 ```
 MP="C:/Program Files/Autodesk/Maya2023/bin/mayapy.exe"
 $MP rig/probe_scene.py                 # read-only scene facts -> template_export/scene_probe.json
-$MP rig/export_rest.py                 # all bodies + joints -> template_export/ (gitignored), spot check
+$MP rig/export_rest.py                 # all bodies + joints -> template_export/ (committed, except scenes/*.mb), spot check
 $MP rig/roundtrip_test.py              # identity + scale 1.05/0.75 gate
 $MP pipeline/canonical.py              # MediaPipe canonical mesh out of face_landmarker.task (committed)
 $MP pipeline/fixture.py                # config/landmark_to_vertex.json (committed, never per subject)

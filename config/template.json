@@ -6,7 +6,7 @@
     "bytes": 432124944,
     "maya": "2023",
     "ziva": "2.2.0-hotfix2",
-    "note": "Tracked through Git LFS. Byte-identical to bts-proj1/Eugene-lab-summer26/Maya file asset/. Lab asset, not for redistribution (bts-proj1/NOTICE)."
+    "note": "Tracked through Git LFS. Byte-identical to bts-proj1/Eugene-lab-summer26/Maya file asset/. Lab asset (see bts-proj1/NOTICE), kept in this project repo."
   },
   "npz_source": {
     "dir_env": "BTS_LAB_DATA",

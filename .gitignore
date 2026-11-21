@@ -223,9 +223,12 @@ build/
 .DS_Store
 Pods/
 
-# Maya exports of the lab template (regenerable; lab data, see bts-proj1/NOTICE).
-# The scene itself is tracked through Git LFS (.gitattributes).
-template_export/
+# template_export/ (lab head exports, fitted subjects, pictures) is committed so
+# both of us work from the same data. Except the Maya scenes it holds: each is
+# ~430 MB, over GitHub's 100 MB file limit, and Git LFS (the lab scene's 432 MB of
+# a 1 GB quota) has no room for them. rig/write_rest.py rebuilds them from the
+# committed subjects/<id>/ in a few minutes.
+template_export/**/*.mb
 
 # Pipeline outputs: keep metrics.json (the analysis dataset), drop the heavy files
 runs/**

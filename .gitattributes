@@ -4,3 +4,7 @@ captures/**/*.bin binary
 captures/**/*.jpg binary
 captures/**/*.png binary
 captures/**/*.zip binary
+# template_export/: exported meshes, fits and pictures are binary
+template_export/**/*.npz binary
+template_export/**/*.png binary
+template_export/**/*.gif binary
