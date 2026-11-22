@@ -249,6 +249,7 @@ def test_dry_run_changes_nothing(guided_src, tmp_path):
     assert len(list(inbox.iterdir())) == 1
 
 
+@pytest.mark.skipif(not hasattr(sys, "stdlib_module_names"), reason="needs Python 3.10+ (mayapy has 3.9)")
 def test_ingest_tool_is_standard_library_only():
     """The person AirDropping captures may only have macOS's python3."""
     allowed = set(sys.stdlib_module_names) | {"config"}

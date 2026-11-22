@@ -1,0 +1,830 @@
+{
+  "subject": "template",
+  "pathway": "probe_attachments",
+  "script": "rig/probe_scene.py --attachments",
+  "run_id": "20261121T222854_7cfb",
+  "status": "ok",
+  "error": null,
+  "traceback": null,
+  "started_at": "2026-11-21T22:28:54",
+  "wall_clock_s": 381.313,
+  "git": {
+    "sha": "fdc3d986cb7d01237d72ff6244b9229c53a5dd8d",
+    "dirty": true
+  },
+  "python": "3.9.7",
+  "packages": {
+    "numpy": "2.0.2",
+    "scipy": "1.13.1",
+    "trimesh": null
+  },
+  "metrics": {
+    "n_attachments": 140,
+    "n_with_source_verts": 126,
+    "n_with_target_verts": 140,
+    "collisions": {
+      "zSolver1Shape": {
+        "type": "zSolver",
+        "mesh": null,
+        "attrs": {
+          "collisionOffsetVelocityIncrement": [
+            []
+          ],
+          "collisionDepthVelocityIncrement": [
+            []
+          ],
+          "collisionDetection": false,
+          "collisionPointSpacing": 0.1,
+          "showCollisions": 1,
+          "contactLineWidth": 2.0
+        }
+      },
+      "zTissue1": {
+        "type": "zTissue",
+        "mesh": null,
+        "attrs": {
+          "collisions": true,
+          "collisionVolume": true,
+          "selfCollisions": false,
+          "collisionMesh": null,
+          "collisionSets": "0",
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zTissue2": {
+        "type": "zTissue",
+        "mesh": null,
+        "attrs": {
+          "collisions": true,
+          "collisionVolume": true,
+          "selfCollisions": false,
+          "collisionMesh": null,
+          "collisionSets": "0",
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zTissue3": {
+        "type": "zTissue",
+        "mesh": null,
+        "attrs": {
+          "collisions": true,
+          "collisionVolume": true,
+          "selfCollisions": false,
+          "collisionMesh": null,
+          "collisionSets": "0",
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zTissue4": {
+        "type": "zTissue",
+        "mesh": null,
+        "attrs": {
+          "collisions": true,
+          "collisionVolume": true,
+          "selfCollisions": false,
+          "collisionMesh": null,
+          "collisionSets": "0",
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zTissue5": {
+        "type": "zTissue",
+        "mesh": null,
+        "attrs": {
+          "collisions": true,
+          "collisionVolume": true,
+          "selfCollisions": false,
+          "collisionMesh": null,
+          "collisionSets": "0",
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zTissue6": {
+        "type": "zTissue",
+        "mesh": null,
+        "attrs": {
+          "collisions": true,
+          "collisionVolume": true,
+          "selfCollisions": false,
+          "collisionMesh": null,
+          "collisionSets": "0",
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zTissue7": {
+        "type": "zTissue",
+        "mesh": null,
+        "attrs": {
+          "collisions": true,
+          "collisionVolume": true,
+          "selfCollisions": false,
+          "collisionMesh": null,
+          "collisionSets": "0",
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zTissue8": {
+        "type": "zTissue",
+        "mesh": null,
+        "attrs": {
+          "collisions": true,
+          "collisionVolume": true,
+          "selfCollisions": false,
+          "collisionMesh": null,
+          "collisionSets": "0",
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zTissue9": {
+        "type": "zTissue",
+        "mesh": null,
+        "attrs": {
+          "collisions": true,
+          "collisionVolume": true,
+          "selfCollisions": false,
+          "collisionMesh": null,
+          "collisionSets": "0",
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zTissue10": {
+        "type": "zTissue",
+        "mesh": null,
+        "attrs": {
+          "collisions": true,
+          "collisionVolume": true,
+          "selfCollisions": false,
+          "collisionMesh": null,
+          "collisionSets": "0",
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zTissue11": {
+        "type": "zTissue",
+        "mesh": null,
+        "attrs": {
+          "collisions": true,
+          "collisionVolume": true,
+          "selfCollisions": false,
+          "collisionMesh": null,
+          "collisionSets": "0",
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zTissue12": {
+        "type": "zTissue",
+        "mesh": null,
+        "attrs": {
+          "collisions": true,
+          "collisionVolume": true,
+          "selfCollisions": false,
+          "collisionMesh": null,
+          "collisionSets": "0",
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zTissue13": {
+        "type": "zTissue",
+        "mesh": null,
+        "attrs": {
+          "collisions": true,
+          "collisionVolume": true,
+          "selfCollisions": false,
+          "collisionMesh": null,
+          "collisionSets": "0",
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zTissue14": {
+        "type": "zTissue",
+        "mesh": null,
+        "attrs": {
+          "collisions": true,
+          "collisionVolume": true,
+          "selfCollisions": false,
+          "collisionMesh": null,
+          "collisionSets": "0",
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zTissue15": {
+        "type": "zTissue",
+        "mesh": null,
+        "attrs": {
+          "collisions": true,
+          "collisionVolume": true,
+          "selfCollisions": false,
+          "collisionMesh": null,
+          "collisionSets": "0",
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zTissue16": {
+        "type": "zTissue",
+        "mesh": null,
+        "attrs": {
+          "collisions": true,
+          "collisionVolume": true,
+          "selfCollisions": false,
+          "collisionMesh": null,
+          "collisionSets": "0",
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zTissue17": {
+        "type": "zTissue",
+        "mesh": null,
+        "attrs": {
+          "collisions": true,
+          "collisionVolume": true,
+          "selfCollisions": false,
+          "collisionMesh": null,
+          "collisionSets": "0",
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zTissue18": {
+        "type": "zTissue",
+        "mesh": null,
+        "attrs": {
+          "collisions": true,
+          "collisionVolume": true,
+          "selfCollisions": false,
+          "collisionMesh": null,
+          "collisionSets": "0",
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zTissue19": {
+        "type": "zTissue",
+        "mesh": null,
+        "attrs": {
+          "collisions": true,
+          "collisionVolume": true,
+          "selfCollisions": false,
+          "collisionMesh": null,
+          "collisionSets": "0",
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zTissue20": {
+        "type": "zTissue",
+        "mesh": null,
+        "attrs": {
+          "collisions": true,
+          "collisionVolume": true,
+          "selfCollisions": false,
+          "collisionMesh": null,
+          "collisionSets": "0",
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zTissue21": {
+        "type": "zTissue",
+        "mesh": null,
+        "attrs": {
+          "collisions": true,
+          "collisionVolume": true,
+          "selfCollisions": false,
+          "collisionMesh": null,
+          "collisionSets": "0",
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zTissue22": {
+        "type": "zTissue",
+        "mesh": null,
+        "attrs": {
+          "collisions": true,
+          "collisionVolume": true,
+          "selfCollisions": false,
+          "collisionMesh": null,
+          "collisionSets": "0",
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zTissue23": {
+        "type": "zTissue",
+        "mesh": null,
+        "attrs": {
+          "collisions": true,
+          "collisionVolume": true,
+          "selfCollisions": false,
+          "collisionMesh": null,
+          "collisionSets": "0",
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zTissue24": {
+        "type": "zTissue",
+        "mesh": null,
+        "attrs": {
+          "collisions": true,
+          "collisionVolume": true,
+          "selfCollisions": false,
+          "collisionMesh": null,
+          "collisionSets": "0",
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zTissue25": {
+        "type": "zTissue",
+        "mesh": null,
+        "attrs": {
+          "collisions": true,
+          "collisionVolume": true,
+          "selfCollisions": false,
+          "collisionMesh": null,
+          "collisionSets": "0",
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zTissue26": {
+        "type": "zTissue",
+        "mesh": null,
+        "attrs": {
+          "collisions": true,
+          "collisionVolume": true,
+          "selfCollisions": false,
+          "collisionMesh": null,
+          "collisionSets": "0",
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zTissue27": {
+        "type": "zTissue",
+        "mesh": null,
+        "attrs": {
+          "collisions": true,
+          "collisionVolume": true,
+          "selfCollisions": false,
+          "collisionMesh": null,
+          "collisionSets": "0",
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zTissue28": {
+        "type": "zTissue",
+        "mesh": null,
+        "attrs": {
+          "collisions": true,
+          "collisionVolume": true,
+          "selfCollisions": false,
+          "collisionMesh": null,
+          "collisionSets": "0",
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zTissue29": {
+        "type": "zTissue",
+        "mesh": null,
+        "attrs": {
+          "collisions": true,
+          "collisionVolume": true,
+          "selfCollisions": false,
+          "collisionMesh": null,
+          "collisionSets": "0",
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zTissue30": {
+        "type": "zTissue",
+        "mesh": null,
+        "attrs": {
+          "collisions": true,
+          "collisionVolume": true,
+          "selfCollisions": false,
+          "collisionMesh": null,
+          "collisionSets": "0",
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zTissue31": {
+        "type": "zTissue",
+        "mesh": null,
+        "attrs": {
+          "collisions": true,
+          "collisionVolume": true,
+          "selfCollisions": false,
+          "collisionMesh": null,
+          "collisionSets": "0",
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zTissue32": {
+        "type": "zTissue",
+        "mesh": null,
+        "attrs": {
+          "collisions": true,
+          "collisionVolume": true,
+          "selfCollisions": false,
+          "collisionMesh": null,
+          "collisionSets": "0",
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zTissue33": {
+        "type": "zTissue",
+        "mesh": null,
+        "attrs": {
+          "collisions": true,
+          "collisionVolume": true,
+          "selfCollisions": false,
+          "collisionMesh": null,
+          "collisionSets": "0",
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zTissue34": {
+        "type": "zTissue",
+        "mesh": null,
+        "attrs": {
+          "collisions": true,
+          "collisionVolume": true,
+          "selfCollisions": false,
+          "collisionMesh": null,
+          "collisionSets": "0",
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zTissue35": {
+        "type": "zTissue",
+        "mesh": null,
+        "attrs": {
+          "collisions": true,
+          "collisionVolume": true,
+          "selfCollisions": false,
+          "collisionMesh": null,
+          "collisionSets": "0",
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zTissue36": {
+        "type": "zTissue",
+        "mesh": null,
+        "attrs": {
+          "collisions": true,
+          "collisionVolume": true,
+          "selfCollisions": false,
+          "collisionMesh": null,
+          "collisionSets": "0",
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zTissue37": {
+        "type": "zTissue",
+        "mesh": null,
+        "attrs": {
+          "collisions": true,
+          "collisionVolume": true,
+          "selfCollisions": false,
+          "collisionMesh": null,
+          "collisionSets": "0",
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zTissue38": {
+        "type": "zTissue",
+        "mesh": null,
+        "attrs": {
+          "collisions": true,
+          "collisionVolume": true,
+          "selfCollisions": false,
+          "collisionMesh": null,
+          "collisionSets": "0",
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zTissue39": {
+        "type": "zTissue",
+        "mesh": null,
+        "attrs": {
+          "collisions": true,
+          "collisionVolume": true,
+          "selfCollisions": false,
+          "collisionMesh": null,
+          "collisionSets": "0",
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zTissue40": {
+        "type": "zTissue",
+        "mesh": null,
+        "attrs": {
+          "collisions": true,
+          "collisionVolume": true,
+          "selfCollisions": false,
+          "collisionMesh": null,
+          "collisionSets": "0",
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zTissue41": {
+        "type": "zTissue",
+        "mesh": null,
+        "attrs": {
+          "collisions": true,
+          "collisionVolume": true,
+          "selfCollisions": false,
+          "collisionMesh": null,
+          "collisionSets": "0",
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zCloth1": {
+        "type": "zCloth",
+        "mesh": null,
+        "attrs": {
+          "collisions": true,
+          "selfCollisions": false,
+          "collisionSets": "0",
+          "collisionMesh": null,
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 5,
+          "contactSliding": true
+        }
+      },
+      "zCloth2": {
+        "type": "zCloth",
+        "mesh": null,
+        "attrs": {
+          "collisions": true,
+          "selfCollisions": false,
+          "collisionSets": "0",
+          "collisionMesh": null,
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 5,
+          "contactSliding": true
+        }
+      },
+      "zBone1": {
+        "type": "zBone",
+        "mesh": "middleres_Jaw",
+        "attrs": {
+          "collisions": true,
+          "collisionSets": "0",
+          "collisionVolume": true,
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zBone2": {
+        "type": "zBone",
+        "mesh": "middleres_skull",
+        "attrs": {
+          "collisions": true,
+          "collisionSets": "0",
+          "collisionVolume": true,
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zBone3": {
+        "type": "zBone",
+        "mesh": "middleres_TeethUp",
+        "attrs": {
+          "collisions": true,
+          "collisionSets": "0",
+          "collisionVolume": true,
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zBone4": {
+        "type": "zBone",
+        "mesh": "middleres_TeethDown",
+        "attrs": {
+          "collisions": true,
+          "collisionSets": "0",
+          "collisionVolume": true,
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zBone6": {
+        "type": "zBone",
+        "mesh": null,
+        "attrs": {
+          "collisions": true,
+          "collisionSets": "0",
+          "collisionVolume": true,
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zBone7": {
+        "type": "zBone",
+        "mesh": null,
+        "attrs": {
+          "collisions": true,
+          "collisionSets": "0",
+          "collisionVolume": true,
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zBone8": {
+        "type": "zBone",
+        "mesh": "jack01_c_head01_high_geo_bone",
+        "attrs": {
+          "collisions": true,
+          "collisionSets": "0",
+          "collisionVolume": false,
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zBone9": {
+        "type": "zBone",
+        "mesh": "polySurface16",
+        "attrs": {
+          "collisions": true,
+          "collisionSets": "0",
+          "collisionVolume": false,
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zBone10": {
+        "type": "zBone",
+        "mesh": "polySurface15",
+        "attrs": {
+          "collisions": true,
+          "collisionSets": "0",
+          "collisionVolume": false,
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zBone11": {
+        "type": "zBone",
+        "mesh": "jack01_c_tongue01_geo",
+        "attrs": {
+          "collisions": true,
+          "collisionSets": "0",
+          "collisionVolume": false,
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      },
+      "zBone12": {
+        "type": "zBone",
+        "mesh": "jack01_c_loTeeth01_geo",
+        "attrs": {
+          "collisions": true,
+          "collisionSets": "0",
+          "collisionVolume": false,
+          "hardContact": false,
+          "contactStiffness": 1.0,
+          "contactStiffnessExp": 6,
+          "contactSliding": true
+        }
+      }
+    }
+  }
+}

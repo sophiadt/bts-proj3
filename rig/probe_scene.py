@@ -137,6 +137,63 @@ def probe_attachments():
     return out
 
 
+def _geo_mesh(cmds, zgeo_plug):
+    """The mesh a zGeo stands for (zAttachment.iGeo1 / iGeo2 -> zGeo -> mesh)."""
+    src = cmds.listConnections(zgeo_plug, source=True, destination=False) or []
+    for g in src:
+        for m in cmds.listConnections(g, type="mesh") or []:
+            return M.short(m)
+    return None
+
+
+def probe_attachment_maps(threshold=0.5):
+    """For each zAttachment: source and target body, and the source/target
+    vertices its weight maps bind (weight > threshold). Offline, pipeline/
+    verify.py checks each attached region's rest distance on a fitted head."""
+    cmds = M.cmds
+    out = {}
+    for a in M.ziva_nodes("zAttachment"):
+        # the attachment deforms [source, target] (input[0], input[1]); the
+        # zGeo route finds only bones
+        geo = [M.short(cmds.listRelatives(g, parent=True)[0]) for g in (cmds.deformer(a, q=True, geometry=True) or [])]
+        entry = {"source": geo[0] if geo else _geo_mesh(cmds, a + ".iGeo1"),
+                 "target": geo[1] if len(geo) > 1 else _geo_mesh(cmds, a + ".iGeo2")}
+        for side, key in ((0, "source"), (1, "target")):
+            mesh = entry[key]
+            if mesh is None:
+                continue
+            n = cmds.polyEvaluate(mesh, vertex=True)
+            try:
+                w = np.asarray(cmds.getAttr("{0}.weightList[{1}].weights[0:{2}]".format(a, side, n - 1)), dtype=float)
+            except Exception as e:                       # unpainted map: recorded, not guessed
+                entry[key + "_error"] = repr(e)
+                continue
+            entry[key + "_verts"] = np.flatnonzero(w > threshold).tolist()
+        out[M.short(a)] = entry
+    return out
+
+
+def probe_collisions():
+    """Collision and contact attributes on every Ziva solver, tissue and cloth."""
+    cmds = M.cmds
+    out = {}
+    for t in ("zSolver", "zSolverTransform", "zTissue", "zCloth", "zMaterial", "zBone"):
+        for node in M.ziva_nodes(t) if t in M.ZIVA_TYPES else (cmds.ls(type=t) or []):
+            vals = {}
+            for attr in cmds.listAttr(node, read=True) or []:
+                low = attr.lower()
+                if "." in attr or not ("collision" in low or "contact" in low):
+                    continue
+                try:
+                    vals[attr] = cmds.getAttr("{0}.{1}".format(node, attr))
+                except Exception:
+                    continue
+            if vals:
+                meshes = cmds.listConnections(node, type="mesh") or []
+                out[M.short(node)] = {"type": t, "mesh": M.short(meshes[0]) if meshes else None, "attrs": vals}
+    return out
+
+
 def probe_zquery():
     """Ziva's own view of the scene, if the zQuery command is exposed."""
     cmds = M.cmds
@@ -207,11 +264,31 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--scene", default=None)
     ap.add_argument("--sequence", action="store_true", help="simulate the animation for lip aperture")
+    ap.add_argument("--attachments", action="store_true",
+                    help="only the attachment vertex maps and collision settings -> "
+                         "template_export/attachment_maps.json")
     args = ap.parse_args()
 
     M.boot()
     out_dir = config.template_export_dir()
     out_dir.mkdir(parents=True, exist_ok=True)
+    if args.attachments:
+        with cio.RunDir("template", "probe_attachments", "rig/probe_scene.py --attachments") as run:
+            scene = M.open_scene(args.scene)
+            report = {"scene_md5": cio.md5_file(scene)}
+            section(report, "attachments", probe_attachment_maps)
+            section(report, "collisions", probe_collisions)
+            cio.write_json_atomic(out_dir / "attachment_maps.json", report)
+            att = report["attachments"] if isinstance(report["attachments"], dict) else {}
+            run.metrics.update({"n_attachments": len(att),
+                                "n_with_source_verts": sum(1 for v in att.values() if v.get("source_verts")),
+                                "n_with_target_verts": sum(1 for v in att.values() if v.get("target_verts")),
+                                "collisions": report["collisions"]})
+            print("attachments with maps: {0} source, {1} target of {2}".format(
+                run.metrics["n_with_source_verts"], run.metrics["n_with_target_verts"], len(att)))
+            print("collision settings:", report["collisions"])
+            print("wrote", out_dir / "attachment_maps.json")
+        return
     with cio.RunDir("template", "probe", "rig/probe_scene.py") as run:
         scene = M.open_scene(args.scene)
         report = {"env": M.env_info(), "scene_md5": cio.md5_file(scene),

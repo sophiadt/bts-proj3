@@ -93,13 +93,21 @@ MP="C:/Program Files/Autodesk/Maya2023/bin/mayapy.exe"
 ID=s01_20261110T212937Z_burst                                     # a capture id from captures/
 
 $MP pipeline/mirror_check.py $ID --record    # 1. left/right check: read the verdict; --record stores it in capture.json
-$MP pipeline/fit_subject.py $ID              # 2. fit (relabels on its own if capture.json says labels: swapped)
+$MP pipeline/fit_subject.py $ID              # 2. fit + physical checks (relabels on its own if capture.json says labels: swapped)
 $MP rig/write_rest.py template_export/subjects/$ID --save $ID --ui-ready   # 3. write into Maya
 $MP rig/sim_check.py template_export/scenes/$ID.mb --subject template_export/subjects/$ID   # 4. check it simulates
 $MP tools/render_fit.py $ID                  # 5. pictures and GIFs
-$MP rig/ui_smoke_test.py $ID                 # 6. the keyboard UI speaks on it; fails if the mouth stays shut
+$MP rig/ui_smoke_test.py $ID                 # 6. the keyboard UI speaks on it; fails if the mouth or lip muscle stays shut
 $MP tools/mouth_check.py $ID                 # 7. mouth opening vs the lab head, with pictures (no licence needed)
 ```
+
+Or let the morph find how far toward the person the rig still works (steps 3, 4 and 6 for each step, about 15 minutes a step, up to 6 steps):
+
+```bash
+$MP rig/morph_search.py $ID                  # -> template_export/scenes/<id>_morph.mb (+ _morph_ui.mb)
+```
+
+`pipeline/fit_subject.py` ends with the physical checks (`pipeline/verify.py`, below) and prints a pass / warn / fail table; `$MP pipeline/verify.py $ID` repeats them on any subject.
 
 Before booking the workstation, any machine with the lab skin (`template_export/`, or `../bts-proj1/data/lab`) can preview the skin fit and the mouth: `python tools/mouth_check.py --preview $ID --compare`.
 
@@ -121,10 +129,22 @@ $MP rig/export_rest.py --update-registry    # lab head bodies and joints → tem
 $MP rig/roundtrip_test.py                   # proves the rig accepts and keeps a new shape
 $MP rig/ui_smoke_test.py capture_01         # after a first fit: also records the lab head speaking
 $MP pipeline/importance.py                  # where the skin needs more detail (from that speech motion)
-$MP pipeline/build_base.py                  # the human-proportioned start head → template_export/subjects/base_human/
+$MP rig/probe_scene.py --attachments       # which vertices each Ziva attachment binds, collision settings
+$MP pipeline/build_base.py                  # optional: a human-proportioned start head (--base)
 ```
 
-Every fit starts from `base_human` once it exists (the lab head fitted once to MediaPipe's average human face). `--lab-head` starts from the raw lab head instead. Rebuild the base after changing the fitting code.
+Fits start from the lab head itself. `--base` starts from `base_human` (the lab head fitted once to MediaPipe's average face) instead: it kept the person's features no better, and its lip muscle came out squeezed shut, which every fit from it inherited.
+
+## Working on another machine (no Maya)
+
+`template_export/` is committed: the lab head's 52 bodies, joints, the importance map, the attachment maps and the fitted subjects. Only the Maya scenes (`.mb`, 430 MB each) are not; `rig/write_rest.py` rebuilds one from its `subjects/<id>/` folder on the workstation in a few minutes.
+
+```bash
+python tools/check_template_export.py                 # everything there? prints what is missing and how to rebuild it
+python tools/mouth_check.py --preview $ID --compare   # skin-only fit and mouth check of a capture
+python pipeline/verify.py $ID                         # physical checks of a fitted subject
+python -m pytest tests                                # (mayapy on the workstation; trimesh tests run on the laptop)
+```
 
 ## 3. Play it in the keyboard UI (Maya with the GUI)
 
@@ -140,7 +160,7 @@ The launcher sizes the phoneme motion to the fitted face (it was recorded on the
 ## Tests
 
 ```bash
-PYTHONPATH=".pytest-lib;." $MP -m pytest tests/test_pipeline.py
+PYTHONPATH=".pytest-lib;." $MP -m pytest tests
 ```
 
 pytest is installed for mayapy with `$MP -m pip install --target .pytest-lib pytest`, so mayapy itself is left unchanged.
@@ -187,11 +207,15 @@ A single photo (`..._photo`) writes the same files without a prefix. A recording
 # 🔬 How the fitting works
 
 1. **Left/right check.** Compares the landmarks' handedness with MediaPipe's canonical face, and uses the turned photos to see which side came toward the lens. It separates OK, swapped labels, a mirrored scan and depth read from the wrong pixels.
-2. **Start head.** The fit starts from `base_human`: the lab head already reshaped once to an average human face (the lab head itself is stylised, about 1.45× a real face with oversized eyes and a long, wide lower face). Same meshes and vertex order, so the rig still applies.
+2. **Start head.** The fit starts from the lab head itself (stylised: about 1.45× a real face, oversized eyes, a long, wide lower face). Same meshes and vertex order throughout, so the rig still applies.
 3. **Join the photos and align.** The front photo's landmarks place the start head (one rotation, position and uniform scale on about 270 landmark pairs from `config/landmark_to_vertex.json`, weighted toward the nose, chin, forehead and jaw). Each turned photo is fitted onto the front's depth, bent smoothly where the two overlap so they join without a step, and adds only the skin the front did not see. Landmarks come from the front photo only.
-4. **Reshape the skin.** The skin is pulled toward its landmarks and onto the depth surface inside the face outline (hair, ears, neck and clothing are left out), while keeping its own shape. It follows the scan only to the scan's noise level (about 1 mm), so the noise is not copied in. The eye openings follow the person's eyelids, keeping the lab head's own offset behind the visible lid (the skin's edge wraps a few mm inward there). The mouth keeps the lab rig's resting opening, centred on the person's lip line: the rig rests with its lips slightly apart and its speech motion starts from there, so closing it to match a closed-mouth capture would seal the mouth. Where the face moves and creases most (lips, jaw, nose, eye corners: an importance map in the spirit of the lab's deformation-weighted Poisson-disk joint sampling) the skin is allowed more detail. Skin no camera saw (the sides and back of the head) stays stiff and is held gently to the start head's shape.
-5. **Move the inside.** Skull, jaw and teeth move together as one (the capture is a closed, neutral mouth), placed so the lab head's skin-to-bone depth is kept under the fitted skin where the camera saw the face. The front teeth are kept behind the lips. The eyeballs are real size (24 mm), rigid, seated behind the fitted eye openings. Muscle and fat follow a smooth field pinned at the skin and at the moved bones.
-6. **Write into Maya.** New rest shapes are written into a copy of the lab scene, wired so Ziva uses them; joints are moved and rebound. Checks: the scene shows the fitted face, every body's polygons and UVs match the lab head, and frames 0–50 (the tissue settling under gravity) run without blowing up. Speech is tested through the keyboard UI (`rig/ui_smoke_test.py`).
+4. **Reshape the skin.** The skin is pulled toward its landmarks and onto the depth surface inside the face outline (hair, ears, neck and clothing are left out), while keeping its own shape. It follows the scan only to the scan's noise level (about 1 mm), so the noise is not copied in. The eye openings follow the person's eyelids, keeping the lab head's own offset behind the visible lid (the skin's edge wraps a few mm inward there). The mouth keeps the lab rig's resting opening, centred on the person's lip line: the rig rests with its lips slightly apart and its speech motion starts from there, so closing it to match a closed-mouth capture would seal the mouth. Where the face moves and creases most (lips, jaw, nose, eye corners: an importance map in the spirit of the lab's deformation-weighted Poisson-disk joint sampling) the skin is allowed more detail. Skin no camera saw (the sides and back of the head) stays stiff and is held gently to the start head's shape. A last **detail pass** moves the skin along its normals toward the smoothed scan (clamped to 4 mm, not near the openings or unseen skin), which brings back the nose, brow, cheekbones and chin the stiff fit softened.
+5. **Move the inside.** Skull, jaw and teeth move together as one (the capture is a closed, neutral mouth), placed so the lab head's skin-to-bone depth is kept under the fitted skin where the camera saw the face. The front teeth are kept behind the lips. The eyeballs are real size (24 mm), rigid, seated behind the fitted eye openings. Muscle and fat follow a smooth field pinned at the skin and at the moved bones, with three guards:
+   - **Lips stay apart.** The lip muscle's upper half follows the upper lip and its lower half the lower lip (two fields, joined past the mouth corners), and where its halves still come closer than 0.7× the lab head's gap they are moved apart. Ziva runs with collisions off, so nothing else would keep them from sticking together.
+   - **No tissue inside bone.** Tissue the warp pushed into skull, jaw or teeth goes back out to the bone's surface.
+   - **No inside-out muscle.** A small muscle the field folds (more than 5% of its triangles) takes its warp's best affine map, or a similarity if that would mirror it.
+6. **Check it is physically valid** (`pipeline/verify.py`, no licence): same mesh, folded triangles, each muscle's volume, tissue inside bone, every Ziva attachment's distance to its bone, mouth and lip muscle open, teeth and eyes behind the skin, each against the lab head at the person's size. Pass / warn / fail with the numbers, saved in `report.json`.
+7. **Write into Maya.** New rest shapes are written into a copy of the lab scene, wired so Ziva uses them; joints are moved and rebound. Checks: the scene shows the fitted face, every body's polygons and UVs match the lab head, and frames 0–50 (the tissue settling under gravity) run without blowing up. Speech is tested through the keyboard UI (`rig/ui_smoke_test.py`).
 
 ---
 

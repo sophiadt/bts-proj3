@@ -1,0 +1,22 @@
+{
+  "subject": "s01_20261110T212937Z_burst_t025",
+  "pathway": "sim_check",
+  "script": "rig/sim_check.py",
+  "run_id": "20261121T233732_29ce",
+  "status": "failed",
+  "error": "FileNotFoundError(2, 'No such file or directory')",
+  "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\syd3\\bts-proj3\\rig\\sim_check.py\", line 115, in main\n    with np.load(sub / \"skin_fit_output.npz\", allow_pickle=False) as z:\n  File \"C:\\Program Files\\Autodesk\\Maya2023\\Python\\lib\\site-packages\\numpy\\lib\\_npyio_impl.py\", line 455, in load\n    fid = stack.enter_context(open(os.fspath(file), \"rb\"))\nFileNotFoundError: [Errno 2] No such file or directory: 'C:\\\\Users\\\\syd3\\\\bts-proj3\\\\template_export\\\\subjects\\\\s01_20261110T212937Z_burst_t025\\\\skin_fit_output.npz'\n",
+  "started_at": "2026-11-21T23:37:32",
+  "wall_clock_s": 0.147,
+  "git": {
+    "sha": "fdc3d986cb7d01237d72ff6244b9229c53a5dd8d",
+    "dirty": true
+  },
+  "python": "3.9.7",
+  "packages": {
+    "numpy": "2.0.2",
+    "scipy": "1.13.1",
+    "trimesh": null
+  },
+  "metrics": {}
+}

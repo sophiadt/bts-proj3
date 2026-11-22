@@ -415,3 +415,87 @@ def test_fixture_is_reproducible():
     committed = fxm.load_fixture()
     assert rebuilt["vertex"] == committed["vertex"]
     assert rebuilt["weight"] == committed["weight"]
+
+
+# --- the committed s01 captures (burst and guided) ------------------------------------------
+
+BURST, GUIDED = "s01_20261110T212937Z_burst", "s01_20261030T170049Z_guided"
+
+
+def _have_capture(cid):
+    try:
+        cap.resolve_capture(cid)
+        return True
+    except (FileNotFoundError, ValueError):
+        return False
+
+
+def needs_capture(*ids):
+    return pytest.mark.skipif(not all(_have_capture(c) for c in ids), reason="capture(s) not in captures/")
+
+
+@needs_capture(BURST, GUIDED)
+def test_burst_capture_manifest_and_landmarks():
+    burst = cap.read_manifest(cap.resolve_capture(BURST))
+    assert burst["mode"] == "burst" and burst["labels"] == "ok" and burst["depth_frames_merged"] == 16
+    views = cap.load_capture(cap.resolve_capture(BURST))
+    assert sorted(views) == ["front", "left", "right"]
+    for v in views.values():
+        assert v.landmarks.shape == (478, 3) and np.isfinite(v.landmarks).all(axis=1).sum() >= 470
+    assert cap.read_manifest(cap.resolve_capture(GUIDED))["labels"] == "swapped"
+
+
+@needs_capture(BURST, GUIDED)
+def test_burst_capture_passes_the_mirror_check_without_relabelling():
+    """The app fix, verified on a phone: the burst capture is OK as captured;
+    the guided one (before the fix) is LABELS_SWAPPED and OK once relabelled."""
+    from pipeline import fit_subject as fs
+    assert mc.check(cap.load_capture(cap.resolve_capture(BURST)))["verdict"] == "OK"
+    guided = cap.load_capture(cap.resolve_capture(GUIDED))
+    assert mc.check(guided)["verdict"] == "LABELS_SWAPPED"
+    fs.relabel(guided)
+    assert mc.check(guided)["verdict"] == "OK"
+
+
+@needs_capture(BURST, GUIDED)
+def test_burst_depth_is_smoother_than_single_frame():
+    from tools import compare_depth_noise as dn
+    rough = {c: dn.roughness(dn.load_depth(str(cap.resolve_capture(c)), "front")) for c in (BURST, GUIDED)}
+    assert rough[BURST][1] < rough[GUIDED][1]            # robust roughness, mm
+    assert rough[BURST][2] < rough[GUIDED][2]            # flying pixels
+
+
+@needs_export
+@needs_capture(BURST)
+def test_burst_skin_fit_from_the_lab_head():
+    """Skin-only fit of the burst capture from the lab head: close to the
+    scan, mouth keeps opening, and the detail pass brings the features closer
+    without many more folds."""
+    from pipeline import fit_subject as fs, fixture as fxm, merge_views, mouth
+    lab, F = mouth.load_lab_mesh(mouth.SKIN)
+    fixture = fxm.load_fixture()
+    mv = merge_views.merge(cap.load_capture(cap.resolve_capture(BURST)), fixture, lab)
+    s = mv["scale"]
+    out = {}
+    for det in (False, True):
+        X, X0, ctx = fs.fit_skin(lab, F, mv, fixture, s, gap_ref=s * lab, detail=det, verbose=False)
+        out[det] = (X, ctx["metrics"], int(geo.flipped_faces(X0, X, F, min_area_ratio=0.05).sum()))
+    X, m, folds = out[True]
+    assert m["nonrigid"]["cloud_to_skin_median_mm"] < 0.8
+    assert folds < 300
+    for region in ("nose", "brow", "cheeks", "chin"):
+        assert m["features"][region]["median_mm"] < out[False][1]["features"][region]["median_mm"]
+    assert folds <= 1.35 * out[False][2]
+    motion, _src = mouth.lab_speech_motion(step=8)
+    if motion is not None:
+        a = mouth.assess(X, F, mouth.mouth_parts(lab, F), s * lab, motion=motion, motion_scale=s)
+        assert a["verdict"] == "OK"
+
+
+@needs_export
+def test_template_export_is_complete_for_a_partner():
+    """tools/check_template_export.py: everything a clone needs to fit, verify
+    and preview without Maya."""
+    from tools import check_template_export as cte
+    problems, _notes = cte.check()
+    assert not problems, problems

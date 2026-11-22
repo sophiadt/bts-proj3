@@ -229,6 +229,11 @@ Pods/
 # a 1 GB quota) has no room for them. rig/write_rest.py rebuilds them from the
 # committed subjects/<id>/ in a few minutes.
 template_export/**/*.mb
+# machine-local: Maya logs, the keyboard UI's scratch output, the morph
+# search's in-between steps (rebuilt by pipeline/morph_steps.py in seconds)
+template_export/logs/
+template_export/ui_results/
+template_export/subjects/*_t[0-9][0-9][0-9]/
 
 # Pipeline outputs: keep metrics.json (the analysis dataset), drop the heavy files
 runs/**

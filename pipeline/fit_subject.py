@@ -41,6 +41,7 @@ from pipeline import capture as cap                    # noqa: E402
 from pipeline import fixture as fx                     # noqa: E402
 from pipeline import holes, importance, merge_views, mirror_check, neutral_check, nonrigid, volumetric  # noqa: E402
 from pipeline import mouth as mouth_mod                # noqa: E402
+from pipeline import detail as detail_mod              # noqa: E402
 from core.similarity import apply_similarity                # noqa: E402
 from core.geometry import ray_hit_distance as geo_ray       # noqa: E402
 
@@ -79,7 +80,13 @@ UNSEEN_STIFFNESS = 4.0
 # of the head swung by up to 14 mm with the choice of views (319 folds); at
 # 0.2 it moves at most 5 mm, only where a view adds data (388 folds).
 UNSEEN_TETHER = 0.2
+# Start head. The default is the lab head itself (2026-11-22): with the detail
+# pass, both captures matched the scan's features as well from it as from the
+# base head (folds 212/337 vs 190/344), and the base head's lip muscle came out
+# squeezed shut (gap median 0.50 mm vs the lab head's 1.67) -- every fit from
+# it inherited that. --base starts from the base head instead.
 BASE_SUBJECT = "base_human"
+PUSH_MAX_LAB_OVERLAP = 0.2         # push tissue out of bone only if under 20% of it overlaps bone on the lab head
 # The mouth hole: "gap" keeps the lab rig's resting opening on the person's lip
 # line (pipeline/holes.mouth_gap_constraints); "contours" is the old pull onto
 # the inner-lip contours, which on a closed-mouth capture shut the hole, fused
@@ -142,7 +149,7 @@ def relabel(views):
 
 
 def fit_skin(V, F, mv, fixture, s, gap_ref=None, base_mode=False, use_anchors=False, mouth=MOUTH_GAP,
-             verbose=True):
+             detail=True, verbose=True):
     """Step 3: the non-rigid skin fit in output space.
 
     V: the start head's skin (unscaled), mv: merge_views.merge() of the capture
@@ -229,6 +236,21 @@ def fit_skin(V, F, mv, fixture, s, gap_ref=None, base_mode=False, use_anchors=Fa
     X, nr = nonrigid.fit(X0, F, lm_idx=lm_i, lm_pts=lm_p, lm_w=lm_w,
                          cloud=cloud_s, cloud_n=cloud_n, oriented=True,
                          data_mask=data_mask, data_w=data_w, reg_w=reg_w, verbose=False, **NONRIGID)
+    fregions = detail_mod.feature_regions(V, regions)
+    if detail:
+        # The stiff fit keeps the start head's local shape; bring the person's
+        # nose, brow, cheek and chin shape back along the skin's normals.
+        seen = data_mask & (cKDTree(cloud_s).query(X, distance_upper_bound=COVERAGE_MM)[0] < np.inf) \
+            if len(cloud_s) else np.zeros(len(X), dtype=bool)
+        X_fit = X
+        X, M["detail"] = detail_mod.detail_pass(X, F, cloud_s, cloud_n, seen, rim_dist=rim_dist)
+        M["detail"]["features_before"] = detail_mod.feature_metric(X_fit, F, cloud_raw, fregions)
+    M["features"] = detail_mod.feature_metric(X, F, cloud_raw, fregions)
+    if verbose:
+        print("features, scan to skin median mm: " + ", ".join(
+            "{0} {1:.2f}".format(k, v["median_mm"]) for k, v in M["features"].items()) +
+            ("" if not detail else " (detail pass moved {0} vertices, median {1:.2f} mm)".format(
+                M["detail"]["n_moved"], M["detail"]["move_median_mm"])))
     v13, v14 = fixture["vertex"][13], fixture["vertex"][14]
     M["openings"] = {"n_constraints": int(len(hidx)), "mouth": mouth,
                      "off_before_mm": holes.alignment_error(X0, hidx, htgt),
@@ -302,14 +324,16 @@ def mouth_report(X, F, parts, scale_vs_lab, muscle=None, mouth_mode=MOUTH_GAP, v
 
 
 def fit(capture_dir, subject_id, out_root=None, do_relabel=False, force=False, use_anchors=False,
-        base=None, base_mode=False, mouth=MOUTH_GAP, verbose=True):
+        base=None, base_mode=False, mouth=MOUTH_GAP, detail=True, split_lips=True, verbose=True):
     """base: start from template_export/subjects/<base> (the human base head)
     instead of the lab head. base_mode: building that base from MediaPipe's
     average face -- its lips are parted (5.8 mm), so lip landmarks and
     lip-region scan data are left out. mouth: MOUTH_GAP keeps the lab rig's
     resting mouth opening on the person's lip line (also in base mode);
     MOUTH_CONTOURS is the old pull onto the inner-lip contours (in base mode,
-    the mouth hole left free)."""
+    the mouth hole left free). detail: the detail pass after the skin fit
+    (pipeline/detail.py). split_lips: lip tissue moved by separate upper and
+    lower fields, then the lip-muscle guard (volumetric.split_lip_warp)."""
     capture_dir = Path(capture_dir)
     out_dir = Path(out_root or config.template_export_dir() / "subjects") / subject_id
     with cio.RunDir(subject_id, "fit", "pipeline/fit_subject.py") as run:
@@ -375,7 +399,7 @@ def fit(capture_dir, subject_id, out_root=None, do_relabel=False, force=False, u
         gap_ref = M["scale_vs_lab_head"] * mouth_mod.load_lab_mesh(fx.SKIN)[0] if mouth == MOUTH_GAP else None
         M["mouth_mode"] = mouth
         X, X0, skin_ctx = fit_skin(V, F, mv, fixture, s, gap_ref=gap_ref, base_mode=base_mode,
-                                   use_anchors=use_anchors, mouth=mouth, verbose=verbose)
+                                   use_anchors=use_anchors, mouth=mouth, detail=detail, verbose=verbose)
         M.update(skin_ctx["metrics"])
         _loops, face_region, near = skin_ctx["loops"], skin_ctx["face_region"], skin_ctx["near"]
         d_skin = X - X0
@@ -447,19 +471,33 @@ def fit(capture_dir, subject_id, out_root=None, do_relabel=False, force=False, u
         # 4b. one field for everything else, pinned at the skin AND at the
         # moved bone surfaces near the face, so muscle and fat fill the space
         # between the two layers instead of being stretched through the bone.
-        sk = np.sort(rng.choice(len(X0), min(volumetric.N_CENTRES, len(X0)), replace=False))
-        pts, disp = [X0[sk]], [d_skin[sk]]
         lo, hi = X0[sample].min(axis=0) - 40.0, X0[sample].max(axis=0) + 40.0
+        bone_pts, bone_disp = [], []
         for bone in BONE_GROUPS:
             if bone not in sims:
                 continue
             bv = scaled[bone]["rest"]
             cand = np.flatnonzero(((bv > lo) & (bv < hi)).all(axis=1))
             pick = np.sort(rng.choice(cand, min(BONE_CENTRES, len(cand)), replace=False)) if len(cand) else cand
-            pts.append(bv[pick])
-            disp.append(apply_similarity(bv[pick], *sims[bone]) - bv[pick])
-        pts, disp = np.concatenate(pts), np.concatenate(disp)
-        field = volumetric.build_field(pts, disp, n_centres=len(pts))
+            bone_pts.append(bv[pick])
+            bone_disp.append(apply_similarity(bv[pick], *sims[bone]) - bv[pick])
+
+        def skin_field(allowed, seed):
+            r = np.random.default_rng(seed)
+            cand = np.flatnonzero(allowed)
+            sk = np.sort(r.choice(cand, min(volumetric.N_CENTRES, len(cand)), replace=False))
+            pts, disp = np.concatenate([X0[sk]] + bone_pts), np.concatenate([d_skin[sk]] + bone_disp)
+            return volumetric.build_field(pts, disp, n_centres=len(pts))
+
+        field = skin_field(np.ones(len(X0), dtype=bool), 0)
+        # The lip tissue gets two fields, one from the skin without the lower
+        # lip and one without the upper, joined past the corners
+        # (volumetric.split_lip_warp), so the lip muscle's halves keep apart.
+        region_s = skin_ctx["regions"][0]
+        field_up = skin_field(region_s != "lip_lower", 1)
+        field_lo = skin_field(region_s != "lip_upper", 2)
+        parts = mouth_mod.mouth_parts(V, F, regions=skin_ctx["regions"])
+        slit = volumetric.slit_line(X0, parts)
 
         # Eyeballs: rigid, anatomical size, seated behind the fitted eye openings.
         eye_ring = {}
@@ -489,13 +527,64 @@ def fit(capture_dir, subject_id, out_root=None, do_relabel=False, force=False, u
             if k in sims:
                 new_rest[k] = apply_similarity(b["rest"], *sims[k])
                 per_body[k] = {"from": "skin depth", "bone_scale": bone_info.get(k, {}).get("extra_scale")}
+            elif k in volumetric.LIP_TISSUES and split_lips:
+                upper = mouth_mod.muscle_upper_mask() if k == mouth_mod.LIP_MUSCLE else None
+                new_rest[k], per_body[k] = volumetric.split_lip_warp(b["rest"], field_up, field_lo, slit, upper)
             else:
                 new_rest[k], info = volumetric.warp_body(bodies[k]["role"], b["rest"], field)
                 if "similarity" in info:
                     sims[k] = info.pop("similarity")
                 per_body[k] = info
             per_body[k].update(volumetric.flip_report(b["rest"], new_rest[k], bodies[k]["faces"]))
+            # A tissue the field folded takes its warp's best affine map instead.
+            if bodies[k]["role"] == "tissue" and per_body[k]["frac"] > volumetric.AFFINE_FALLBACK_FLIPS:
+                folded = per_body[k]["n_flipped_or_collapsed"]
+                new_rest[k], aff = volumetric.affine_fallback(b["rest"], new_rest[k])
+                per_body[k].update(volumetric.flip_report(b["rest"], new_rest[k], bodies[k]["faces"]))
+                per_body[k].update(aff, folded_by_field=folded)
         per_body[fx.SKIN].update(volumetric.flip_report(X0, X, F))
+        # Tissue the warp pushed into skull, jaw or teeth goes back to the bone's
+        # surface (the solver runs with collisions off, so nothing else would
+        # push it out). Only for tissue that barely overlaps bone on the lab
+        # head: the chin muscle already has 46% of its vertices inside the
+        # jaw there, and pushing just the newly-inside ones tore it (volume
+        # 0.67 -> 0.18 of the lab head's).
+        from pipeline import verify as verify_mod
+        bone_keys = [b for b in verify_mod.BONES if b in new_rest]
+        lab_signs = {b: nonrigid.outward_sign(bodies[b]["rest"], bodies[b]["faces"]) for b in bone_keys}
+        pushed = {}
+        for k in new_rest:
+            if bodies[k]["role"] != "tissue" or not verify_mod.gated(k) or k.startswith("middleres_Eyes_"):
+                continue
+            was = np.zeros(len(new_rest[k]), dtype=bool)
+            for b in bone_keys:
+                was |= verify_mod.inside(scaled[k]["rest"], scaled[b]["rest"], bodies[b]["faces"], lab_signs[b])
+            if was.mean() > PUSH_MAX_LAB_OVERLAP:
+                continue
+            new_rest[k], info = volumetric.push_out_of_bones(
+                new_rest[k], bodies[k]["faces"], [(new_rest[b], bodies[b]["faces"]) for b in bone_keys], was)
+            if info["n_pushed"]:
+                pushed[k] = info
+                per_body[k].update(volumetric.flip_report(scaled[k]["rest"], new_rest[k], bodies[k]["faces"]))
+        M["pushed_out_of_bone"] = pushed
+        if verbose and pushed:
+            print("pushed out of bone: " + ", ".join("{0} {1}".format(k.replace("middleres_", ""), v["n_pushed"])
+                                                     for k, v in sorted(pushed.items(), key=lambda kv: -kv[1]["n_pushed"])[:6]))
+        # Lip-muscle guard: where its halves still come closer than 0.7x the
+        # lab head's gap, the lower half moves down by the shortfall.
+        oo = mouth_mod.LIP_MUSCLE
+        if oo in new_rest and split_lips:
+            ref_oo = M["scale_vs_lab_head"] * mouth_mod.load_lab_mesh(oo)[0]
+            ref_sk = M["scale_vs_lab_head"] * mouth_mod.load_lab_mesh(fx.SKIN)[0]
+            new_rest[oo], M["lip_muscle_guard"] = volumetric.open_lip_muscle(
+                new_rest[oo], X, parts, ref_oo, ref_sk)
+            per_body[oo].update(volumetric.flip_report(scaled[oo]["rest"], new_rest[oo], bodies[oo]["faces"]))
+            if verbose:
+                g = M["lip_muscle_guard"]
+                print("lip muscle guard: {0} of {1} slices under 0.7x the lab head's gap; median gap {2:.2f} -> "
+                      "{3:.2f} mm".format(g.get("slices_short", 0), g.get("slices", 0),
+                                          g.get("gap_median_before_mm") or float("nan"),
+                                          g.get("gap_median_after_mm") or float("nan")))
         jnames = sorted(sjoints)
         jpos = np.array([sjoints[n] for n in jnames])
         new_joints = dict(zip(jnames, jpos + volumetric.eval_field(field, jpos)))
@@ -516,7 +605,6 @@ def fit(capture_dir, subject_id, out_root=None, do_relabel=False, force=False, u
         # rest and with the lab head's speech motion added, lip muscle's halves
         # apart (pipeline/mouth.py; the gate on the simulated animation is
         # tools/mouth_check.py).
-        parts = mouth_mod.mouth_parts(V, F, regions=skin_ctx["regions"])
         M["mouth"] = mouth_report(X, F, parts, M["scale_vs_lab_head"], muscle=new_rest.get(mouth_mod.LIP_MUSCLE),
                                   mouth_mode=mouth, verbose=verbose)
 
@@ -533,6 +621,12 @@ def fit(capture_dir, subject_id, out_root=None, do_relabel=False, force=False, u
                       "Tissue depth is relative to the template, not the subject's anatomy (artist-fitted skin).",
                       "Regions the phone did not see are extrapolated by the regulariser and the RBF field.",
                       "Joint animation is offset, not re-targeted: expressions move about the warped pivots."]}
+        # Tier-1 verification (pipeline/verify.py): physically valid before Maya?
+        report["verify"] = verify_mod.verify_rest(new_rest, M["scale_vs_lab_head"])
+        M["verify"] = {"verdict": report["verify"]["verdict"], "failed": report["verify"]["failed"],
+                       "warned": report["verify"]["warned"]}
+        if verbose:
+            print(verify_mod.summary(report["verify"]))
         cio.write_json_atomic(out_dir / "report.json", report)
         M["out_dir"] = str(out_dir)
         if verbose:
@@ -549,17 +643,17 @@ def main():
     ap.add_argument("--no-relabel", action="store_true", help="ignore capture.json's labels: swapped")
     ap.add_argument("--force", action="store_true", help="proceed past a failing mirror gate (not for real fits)")
     ap.add_argument("--anchors", action="store_true", help="extra scan weight on the Poisson-disk anchors (measured no gain)")
-    ap.add_argument("--base", default=None,
-                    help="start head: a subject under template_export/subjects (default: {0} if it exists, "
-                         "else the lab head)".format(BASE_SUBJECT))
-    ap.add_argument("--lab-head", action="store_true", help="start from the lab head even if a base head exists")
+    ap.add_argument("--base", nargs="?", const=BASE_SUBJECT, default=None,
+                    help="start from a subject under template_export/subjects instead of the lab head "
+                         "(bare --base: {0})".format(BASE_SUBJECT))
+    ap.add_argument("--no-detail", action="store_true", help="skip the detail pass (for comparison)")
+    ap.add_argument("--no-split-lips", action="store_true",
+                    help="one shared field for the lip tissue, no lip-muscle guard (for comparison)")
     ap.add_argument("--close-mouth", action="store_true",
                     help="old behaviour: pull the mouth hole onto the inner-lip contours (seals a closed-mouth "
                          "capture; for comparison only)")
     args = ap.parse_args()
     base = args.base
-    if base is None and not args.lab_head and (config.template_export_dir() / "subjects" / BASE_SUBJECT).exists():
-        base = BASE_SUBJECT
     capture = cap.resolve_capture(args.capture)
     manifest = cap.read_manifest(capture) or {}
     relabel_flag = args.relabel
@@ -567,7 +661,8 @@ def main():
         relabel_flag = True
         print("capture.json records labels: swapped (a reviewed mirror check) -> relabelling; --no-relabel to skip")
     fit(capture, args.id or cap.capture_id(capture), do_relabel=relabel_flag, force=args.force,
-        use_anchors=args.anchors, base=base, mouth=MOUTH_CONTOURS if args.close_mouth else MOUTH_GAP)
+        use_anchors=args.anchors, base=base, mouth=MOUTH_CONTOURS if args.close_mouth else MOUTH_GAP,
+        detail=not args.no_detail, split_lips=not args.no_split_lips)
 
 
 if __name__ == "__main__":

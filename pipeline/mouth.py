@@ -99,13 +99,41 @@ def front_opening_mm2(X, F, parts, step=0.25):
     return float((~covered).sum() * step * step)
 
 
-def muscle_gap(P, X, parts, slice_mm=1.0):
+_UPPER_CACHE = {}
+
+
+def muscle_upper_mask():
+    """Which lip-muscle vertices belong to its upper half, labelled once on the
+    lab head (where the halves are clearly apart) by the skin's slit there.
+    Vertex order never changes, so the labels hold for any fit; splitting a
+    fitted muscle by the fitted skin's slit can misplace the halves when the
+    lip line moved relative to the muscle. None if the lab meshes are absent."""
+    if "upper" not in _UPPER_CACHE:
+        try:
+            sk, F = load_lab_mesh(SKIN)
+            P, _ = load_lab_mesh(LIP_MUSCLE)
+        except (OSError, KeyError):
+            return None
+        parts = mouth_parts(sk, F)
+        up, lo = sk[parts["upper"]], sk[parts["lower"]]
+        yu = np.interp(P[:, 0], *zip(*sorted(zip(up[:, 0], up[:, 1]))))
+        yl = np.interp(P[:, 0], *zip(*sorted(zip(lo[:, 0], lo[:, 1]))))
+        _UPPER_CACHE["upper"] = P[:, 1] >= 0.5 * (yu + yl)
+    return _UPPER_CACHE["upper"]
+
+
+def muscle_gap(P, X, parts, slice_mm=1.0, upper=None):
     """Gap (mm) between the lip muscle's upper and lower halves, per x-slice
     across the middle 70% of the mouth. P: lip muscle vertices, X: the skin in
-    the same pose (its mouth hole defines the slit's centre line). The gap is
-    the closest pair across the centre line, so halves that touch or cross give
-    ~0. -> dict(min, median, gaps, xs)."""
+    the same pose (its mouth sets the slices). upper: (len(P),) bool labels of
+    the upper half -- by default muscle_upper_mask() when P is the lab
+    muscle's mesh, else split at the skin slit's centre line. The gap is the
+    closest pair across, so halves that touch or cross give ~0.
+    -> dict(min, median, gaps, xs)."""
     P = np.asarray(P, dtype=np.float64)
+    if upper is None:
+        m = muscle_upper_mask()
+        upper = m if m is not None and len(m) == len(P) else None
     Q = np.asarray(X, dtype=np.float64)[parts["loop"]]
     xa, xb = Q[:, 0].min(), Q[:, 0].max()
     w = xb - xa
@@ -117,8 +145,12 @@ def muscle_gap(P, X, parts, slice_mm=1.0):
         if len(q) < 2:
             continue
         yc = 0.5 * (q[:, 1].max() + q[:, 1].min())
-        sl = P[(np.abs(P[:, 0] - x) < 0.75 * slice_mm) & (np.abs(P[:, 1] - yc) < 0.3 * w) & (P[:, 2] < zmax)]
-        up, lo = sl[sl[:, 1] >= yc], sl[sl[:, 1] < yc]
+        near = (np.abs(P[:, 0] - x) < 0.75 * slice_mm) & (np.abs(P[:, 1] - yc) < 0.3 * w) & (P[:, 2] < zmax)
+        if upper is not None:
+            up, lo = P[near & upper], P[near & ~upper]
+        else:
+            sl = P[near]
+            up, lo = sl[sl[:, 1] >= yc], sl[sl[:, 1] < yc]
         if not len(up) or not len(lo):
             continue
         xs.append(float(x))

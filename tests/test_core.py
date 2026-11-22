@@ -12,7 +12,7 @@ import math
 
 import numpy as np
 import pytest
-import trimesh
+trimesh = pytest.importorskip("trimesh")             # laptop side only; mayapy has none
 
 import config
 from core import io as cio

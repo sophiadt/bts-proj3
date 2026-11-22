@@ -4,7 +4,7 @@ import json
 
 import numpy as np
 import pytest
-import trimesh
+trimesh = pytest.importorskip("trimesh")             # laptop side only; mayapy has none
 
 import config
 from checks import template_features as tf
