@@ -168,6 +168,7 @@ def test_rigid_body_keeps_its_lab_shape_and_matches_the_fit_size():
     assert ratio.std() < 1e-9 and abs(ratio.mean() - 0.74) < 0.03          # a pure similarity: shape kept, size follows the fit
     assert np.allclose(out["skin"], B)
     assert morph_steps.step_name("s01_x", 1.0, rigid={"middleres_OrbicularisOris"}).endswith("_OrbicularisOrisRigid")
+    assert morph_steps.step_name("s01_x", 1.0, rigid={"a", "b"}, tag="lift") == "s01_x_t100_lift"
 
 
 # --- lips that separate --------------------------------------------------------------------

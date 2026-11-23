@@ -35,10 +35,12 @@ from core.similarity import similarity_transform       # noqa: E402
 RIGID_PREFIXES = ("middleres_Eyes_",)
 
 
-def step_name(subject, t, part_t=None, rigid=None):
+def step_name(subject, t, part_t=None, rigid=None, tag=None):
     """<subject>_tNNN; with per-body fractions, <subject>_tNNN_<Body>NNN... so a step that
     holds the lip muscle back never overwrites the plain step of the same t."""
     name = "{0}_t{1:03d}".format(subject, int(round(100 * t)))
+    if tag:                                              # a short name instead of one suffix per body
+        return name + "_" + tag
     for k in sorted(part_t or {}):
         name += "_{0}{1:03d}".format(k.replace("middleres_", ""), int(round(100 * part_t[k])))
     for k in sorted(rigid or ()):
@@ -127,7 +129,7 @@ def load_rest_dir(d):
     return rest, joints
 
 
-def write_step(subject, t, out_root=None, verify=True, verbose=True, part_t=None, rigid=None):
+def write_step(subject, t, out_root=None, verify=True, verbose=True, part_t=None, rigid=None, tag=None):
     """Write template_export/subjects/<subject>_tNNN for fraction t of the way
     from the lab head to the fitted <subject>. -> (dir, report).
     part_t {body: fraction} holds named bodies at their own fraction (e.g. the lip
@@ -153,7 +155,7 @@ def write_step(subject, t, out_root=None, verify=True, verbose=True, part_t=None
     j0 = np.array([lab_joints[n] for n in jnames])
     joints = (1 - t) * j0 + t * jfit
     scale = (1 - t) * 1.0 + t * float(fm.get("scale_vs_lab_head", fm["scale"]))
-    out = root / step_name(subject, t, part_t, rigid)
+    out = root / step_name(subject, t, part_t, rigid, tag)
     out.mkdir(parents=True, exist_ok=True)
     for k, r in rest.items():
         np.savez(out / (k + ".npz"), rest_vertices=r, faces=lab[k]["faces"].astype(np.int32), role=lab[k]["role"],
@@ -189,13 +191,14 @@ def main():
                     help="hold one body at its own fraction, e.g. --part OrbicularisOris=0.125 (repeatable)")
     ap.add_argument("--rigid", action="append", metavar="BODY",
                     help="keep BODY's lab-head shape and only scale/turn/move it onto the fit, e.g. --rigid OrbicularisOris")
+    ap.add_argument("--tag", help="short suffix for the step folder (use with several --part/--rigid: keeps Windows paths short)")
     args = ap.parse_args()
     part_t = parse_part(args.part)
     rigid = set(args.rigid or [])
     for t in args.t:
         if not 0.0 <= t <= 1.0:
             raise SystemExit("t must be within 0..1, got {0}".format(t))
-        out, _rep = write_step(args.subject, t, verify=not args.no_verify, part_t=part_t, rigid=rigid)
+        out, _rep = write_step(args.subject, t, verify=not args.no_verify, part_t=part_t, rigid=rigid, tag=args.tag)
         print("wrote", out)
 
 
