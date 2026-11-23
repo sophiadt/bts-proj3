@@ -74,7 +74,7 @@ python tools/mouth_check.py --preview ID --compare   # any machine with the lab 
 $MP pipeline/fit_subject.py ID         # ID = capture id; output name defaults to it (--id overrides)
 $MP rig/write_rest.py template_export/subjects/ID --save ID --ui-ready
 $MP rig/sim_check.py template_export/scenes/ID.mb --subject template_export/subjects/ID
-$MP tools/render_fit.py ID              # pictures + animation GIFs -> template_export/subjects/ID/views
+$MP tools/render_fit.py ID              # pictures + photo comparison + animation GIFs -> template_export/subjects/ID/views
 $MP rig/ui_smoke_test.py ID             # keyboard UI plays "not even you" on the fitted head (runs the lab's code); fails a shut mouth
 $MP tools/mouth_check.py ID             # mouth opening vs the lab head from the saved UI frames + pictures (no licence needed)
 $MP pipeline/importance.py              # once, after the first UI test: skin importance map + Poisson-disk anchors

@@ -50,7 +50,7 @@ bts-proj3/
 │   ├── ingest_capture.py                files AirDropped captures into captures/ (standard library only)
 │   ├── compare_depth_noise.py           depth roughness per pose (single frame vs burst)
 │   ├── mouth_check.py                   does the fitted mouth open like the lab head's? (no Ziva needed)
-│   └── render_fit.py                    pictures and animation GIFs of a fit
+│   └── render_fit.py                    pictures, photo comparison and animation GIFs of a fit
 ├── experimental/partner_scan_to_maya/   the app author's first Maya prototype (superseded, kept for reference)
 ├── core/, checks/                       shared geometry, IO and template measurements
 ├── config/                              landmark map, MediaPipe canonical face, template registry
@@ -96,7 +96,7 @@ $MP pipeline/mirror_check.py $ID --record    # 1. left/right check: read the ver
 $MP pipeline/fit_subject.py $ID              # 2. fit + physical checks (relabels on its own if capture.json says labels: swapped)
 $MP rig/write_rest.py template_export/subjects/$ID --save $ID --ui-ready   # 3. write into Maya
 $MP rig/sim_check.py template_export/scenes/$ID.mb --subject template_export/subjects/$ID   # 4. check it simulates
-$MP tools/render_fit.py $ID                  # 5. pictures and GIFs
+$MP tools/render_fit.py $ID                  # 5. pictures, photo comparison and GIFs
 $MP rig/ui_smoke_test.py $ID                 # 6. the keyboard UI speaks on it; fails if the mouth or lip muscle stays shut
 $MP tools/mouth_check.py $ID                 # 7. mouth opening vs the lab head, with pictures (no licence needed)
 ```

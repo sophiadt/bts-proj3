@@ -1,5 +1,8 @@
 """Pictures of a fitted subject: before/after, scan match, inside, animation.
 
+Also the phone's photos (front, left, right) above the fitted skin turned
+to about the same angles (photo_compare.png), when the capture is on disk.
+
 Reads template_export/subjects/<id>/ (written by pipeline/fit_subject.py, and
 anim_*.npz by rig/sim_check.py and rig/ui_smoke_test.py) and writes PNGs and
 GIFs to template_export/subjects/<id>/views/. Matplotlib painter's-algorithm
@@ -193,7 +196,76 @@ def render(subject, out=None):
             continue
         frames = np.load(f)["skin"]
         written += animate(frames, F, out / (name + ".gif"), out / (name + "_sheet.png"), label)
+
+    # 6. the phone's photos above the fitted skin, from about the same angles
+    cap = capture_folder(json.load(open(sub / "report.json")).get("capture"))
+    if cap is not None and photo_compare(cap, X, F, out / "photo_compare.png"):
+        written.append("photo_compare.png")
     return out, written
+
+
+TURN_DEG = 35.0      # the guided capture asks for turns of roughly this much
+
+
+def capture_folder(capture):
+    """The capture's folder on this machine, from the report's capture path
+    or id (the path is machine-specific, so it falls back to the id)."""
+    if not capture:
+        return None
+    p = Path(capture)
+    if p.is_dir():
+        return p
+    try:
+        from pipeline.capture import resolve_capture
+        d = Path(resolve_capture(p.name))
+        return d if d.is_dir() else None
+    except Exception:
+        return None
+
+
+def capture_photo(cap, view):
+    """A capture's colour photo, upright, cropped to the face's middle."""
+    from PIL import Image
+    up = cap / "{0}_rgb_upright.jpg".format(view)
+    raw = cap / "{0}_rgb.jpg".format(view)
+    if up.exists():
+        im = Image.open(up)
+    elif raw.exists():
+        im = Image.open(raw).rotate(-90, expand=True)     # sensor landscape -> upright
+    else:
+        return None
+    w, h = im.size
+    im = im.crop((int(0.22 * w), int(0.20 * h), int(0.78 * w), int(0.80 * h)))
+    im.thumbnail((700, 700))
+    return im
+
+
+def yawed(P, deg):
+    """P turned about the vertical axis through its centre (positive: the face
+    turns toward the viewer's right)."""
+    a = np.radians(deg)
+    c = P.mean(axis=0)
+    R = np.array([[np.cos(a), 0, np.sin(a)], [0, 1, 0], [-np.sin(a), 0, np.cos(a)]])
+    return (P - c) @ R.T + c
+
+
+def photo_compare(cap, X, F, path):
+    """Photos (left_, front_, right_) above the fitted skin at about the same
+    angles. -> True if written (needs at least the front photo)."""
+    views = [v for v in ("left", "front", "right") if capture_photo(cap, v) is not None]
+    if "front" not in views:
+        return False
+    yaw = {"left": TURN_DEG, "front": 0.0, "right": -TURN_DEG}
+    titles = {"front": "Front photo", "left": "Turned photo (left_)", "right": "Turned photo (right_)"}
+    fig, axes = plt.subplots(2, len(views), figsize=(4.5 * len(views), 10), facecolor=BG, squeeze=False)
+    for col, view in enumerate(views):
+        axes[0, col].imshow(capture_photo(cap, view)); axes[0, col].axis("off")
+        axes[0, col].set_title(titles[view], fontsize=12)
+        draw(axes[1, col], yawed(X, yaw[view]), F, "front")
+    axes[1, views.index("front")].set_title("Fitted lab skin, same angles", fontsize=12)
+    fig.suptitle(cap.name, fontsize=13)
+    plt.tight_layout(); plt.savefig(path, dpi=70, facecolor=BG); plt.close()
+    return True
 
 
 def animate(frames, F, gif, sheet, label, step=2):
