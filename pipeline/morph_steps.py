@@ -35,12 +35,14 @@ from core.similarity import similarity_transform       # noqa: E402
 RIGID_PREFIXES = ("middleres_Eyes_",)
 
 
-def step_name(subject, t, part_t=None):
+def step_name(subject, t, part_t=None, rigid=None):
     """<subject>_tNNN; with per-body fractions, <subject>_tNNN_<Body>NNN... so a step that
     holds the lip muscle back never overwrites the plain step of the same t."""
     name = "{0}_t{1:03d}".format(subject, int(round(100 * t)))
     for k in sorted(part_t or {}):
         name += "_{0}{1:03d}".format(k.replace("middleres_", ""), int(round(100 * part_t[k])))
+    for k in sorted(rigid or ()):
+        name += "_{0}Rigid".format(k.replace("middleres_", ""))
     return name
 
 
@@ -95,15 +97,17 @@ def rigid_step(A, B, t):
     return (1 - t) * c0 + t * c1 + (s ** t) * (A - c0) @ Rt.T
 
 
-def interpolate(start, fit, roles, t, part_t=None):
+def interpolate(start, fit, roles, t, part_t=None, rigid=None):
     """start, fit: {body: (V,3) rest}; roles: {body: role}. -> {body: (V,3)}.
-    part_t {body: fraction} puts those bodies at their own fraction instead of t."""
+    part_t {body: fraction} puts those bodies at their own fraction instead of t.
+    rigid {body, ...} keeps those bodies' lab-head SHAPE and only scales, turns and moves it
+    onto the fit (one similarity, like bones): no free deformation, so no lumps from the warp."""
     out = {}
     for k, A in start.items():
         B = fit[k]
         tk = _part_for(k, part_t)
         tk = t if tk is None else tk
-        if roles.get(k) == "bone" or k.startswith(RIGID_PREFIXES):
+        if roles.get(k) == "bone" or k.startswith(RIGID_PREFIXES) or _part_for(k, dict.fromkeys(rigid or (), 0)) is not None:
             out[k] = rigid_step(A, B, tk)
         else:
             out[k] = (1 - tk) * A + tk * B
@@ -123,7 +127,7 @@ def load_rest_dir(d):
     return rest, joints
 
 
-def write_step(subject, t, out_root=None, verify=True, verbose=True, part_t=None):
+def write_step(subject, t, out_root=None, verify=True, verbose=True, part_t=None, rigid=None):
     """Write template_export/subjects/<subject>_tNNN for fraction t of the way
     from the lab head to the fitted <subject>. -> (dir, report).
     part_t {body: fraction} holds named bodies at their own fraction (e.g. the lip
@@ -141,15 +145,15 @@ def write_step(subject, t, out_root=None, verify=True, verbose=True, part_t=None
     fit_rest, (jnames, jfit) = load_rest_dir(fit_dir)
     start = {k: lab[k]["rest"] for k in fit_rest}
     roles = {k: lab[k]["role"] for k in fit_rest}
-    rest = interpolate(start, fit_rest, roles, t, part_t)
-    if part_t:
-        unknown = [k for k in part_t if all(_part_for(b, {k: 0}) is None for b in rest)]
+    rest = interpolate(start, fit_rest, roles, t, part_t, rigid)
+    if part_t or rigid:
+        unknown = [k for k in list(part_t or {}) + list(rigid or ()) if all(_part_for(b, {k: 0}) is None for b in rest)]
         if unknown:
             raise ValueError("--part names no body: {0} (bodies: {1})".format(unknown, ", ".join(sorted(rest))))
     j0 = np.array([lab_joints[n] for n in jnames])
     joints = (1 - t) * j0 + t * jfit
     scale = (1 - t) * 1.0 + t * float(fm.get("scale_vs_lab_head", fm["scale"]))
-    out = root / step_name(subject, t, part_t)
+    out = root / step_name(subject, t, part_t, rigid)
     out.mkdir(parents=True, exist_ok=True)
     for k, r in rest.items():
         np.savez(out / (k + ".npz"), rest_vertices=r, faces=lab[k]["faces"].astype(np.int32), role=lab[k]["role"],
@@ -165,7 +169,8 @@ def write_step(subject, t, out_root=None, verify=True, verbose=True, part_t=None
     report = {"capture": fit_rep.get("capture"), "subject": out.name,
               "metrics": {"start_head": "lab head", "scale": scale, "scale_vs_lab_head": scale,
                           "morph": {"of": subject, "t": float(t),
-                                    "part_t": {k: float(v) for k, v in (part_t or {}).items()}}}}
+                                    "part_t": {k: float(v) for k, v in (part_t or {}).items()},
+                                    "rigid": sorted(rigid or ())}}}
     if verify:
         from pipeline import verify as vf
         report["verify"] = vf.verify_rest(rest, scale)
@@ -182,12 +187,15 @@ def main():
     ap.add_argument("--no-verify", action="store_true")
     ap.add_argument("--part", action="append", metavar="BODY=T",
                     help="hold one body at its own fraction, e.g. --part OrbicularisOris=0.125 (repeatable)")
+    ap.add_argument("--rigid", action="append", metavar="BODY",
+                    help="keep BODY's lab-head shape and only scale/turn/move it onto the fit, e.g. --rigid OrbicularisOris")
     args = ap.parse_args()
     part_t = parse_part(args.part)
+    rigid = set(args.rigid or [])
     for t in args.t:
         if not 0.0 <= t <= 1.0:
             raise SystemExit("t must be within 0..1, got {0}".format(t))
-        out, _rep = write_step(args.subject, t, verify=not args.no_verify, part_t=part_t)
+        out, _rep = write_step(args.subject, t, verify=not args.no_verify, part_t=part_t, rigid=rigid)
         print("wrote", out)
 
 

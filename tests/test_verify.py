@@ -154,6 +154,22 @@ def test_part_t_step_names_never_collide_and_parse_rejects_bad_input():
         raise AssertionError("accepted " + bad)
 
 
+def test_rigid_body_keeps_its_lab_shape_and_matches_the_fit_size():
+    rng = np.random.default_rng(4)
+    A = rng.normal(size=(60, 3)) * 10
+    ang = 0.4
+    R = np.array([[np.cos(ang), -np.sin(ang), 0], [np.sin(ang), np.cos(ang), 0], [0, 0, 1]])
+    B = 0.74 * A @ R.T + [3.0, 1.0, -2.0] + rng.normal(size=A.shape) * 0.5     # the fit: a smaller, noisy copy
+    start, fit = {"middleres_OrbicularisOris": A, "skin": A}, {"middleres_OrbicularisOris": B, "skin": B}
+    roles = {"middleres_OrbicularisOris": "tissue", "skin": "skin"}
+    out = morph_steps.interpolate(start, fit, roles, 1.0, rigid={"OrbicularisOris"})
+    d = lambda X: np.linalg.norm(X[:, None] - X[None], axis=2)
+    ratio = d(out["middleres_OrbicularisOris"])[d(A) > 1] / d(A)[d(A) > 1]
+    assert ratio.std() < 1e-9 and abs(ratio.mean() - 0.74) < 0.03          # a pure similarity: shape kept, size follows the fit
+    assert np.allclose(out["skin"], B)
+    assert morph_steps.step_name("s01_x", 1.0, rigid={"middleres_OrbicularisOris"}).endswith("_OrbicularisOrisRigid")
+
+
 # --- lips that separate --------------------------------------------------------------------
 
 def _lip_slabs(gap):
