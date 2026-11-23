@@ -165,6 +165,20 @@ PYTHONPATH=".pytest-lib;." $MP -m pytest tests
 
 pytest is installed for mayapy with `$MP -m pip install --target .pytest-lib pytest`, so mayapy itself is left unchanged.
 
+## Working together
+
+1. **Pull first:** `git pull`, so you start from the latest `main`.
+2. **Work on a branch:** `git switch -c <short-name>`, never straight on `main`.
+3. **Before every commit, read the list of changed files.** Red "deleted" entries you didn't intend mean stop: the folder you are committing from is probably an old or partial copy of the repo. On 2 Nov a commit like that deleted 94 files from `main`.
+4. **Push the branch and open a pull request** into `main`. GitHub runs the checks in `.github/workflows/pr-checks.yml`:
+   - the deletion guard;
+   - the tests, as on mayapy and as on a laptop;
+   - an error-only lint.
+
+   Run the guard yourself first with `python tools/check_changes.py origin/main HEAD`.
+5. **Merge once the checks are green.** If a pull request deletes files on purpose, say so in it and add the `allow-deletions` label.
+6. **To undo a bad commit, use `git revert <sha>`**, which keeps history. Never use `git push --force`: it is the one thing that really erases work.
+
 ---
 
 # 📸 Taking a good capture
