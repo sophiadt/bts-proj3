@@ -126,6 +126,34 @@ def test_interpolate_moves_soft_bodies_linearly_and_bones_rigidly():
     assert morph_steps.step_name("s01_x", 0.5) == "s01_x_t050"
 
 
+def test_part_t_holds_named_bodies_at_their_own_fraction():
+    rng = np.random.default_rng(3)
+    A, B = rng.normal(size=(30, 3)), rng.normal(size=(30, 3))
+    start = {"middleres_OrbicularisOris": A, "skin": A}
+    fit = {"middleres_OrbicularisOris": B, "skin": B}
+    roles = {"middleres_OrbicularisOris": "tissue", "skin": "skin"}
+    out = morph_steps.interpolate(start, fit, roles, 1.0, {"OrbicularisOris": 0.125})
+    assert np.allclose(out["skin"], B)                                       # the rest goes all the way
+    assert np.allclose(out["middleres_OrbicularisOris"], 0.875 * A + 0.125 * B)
+    full = morph_steps.interpolate(start, fit, roles, 1.0, {"middleres_OrbicularisOris": 0.125})
+    assert np.allclose(full["middleres_OrbicularisOris"], out["middleres_OrbicularisOris"])
+    none = morph_steps.interpolate(start, fit, roles, 0.5)
+    assert np.allclose(none["middleres_OrbicularisOris"], 0.5 * A + 0.5 * B)  # off by default
+
+
+def test_part_t_step_names_never_collide_and_parse_rejects_bad_input():
+    plain = morph_steps.step_name("s01_x", 1.0)
+    held = morph_steps.step_name("s01_x", 1.0, {"middleres_OrbicularisOris": 0.125})
+    assert plain == "s01_x_t100" and held != plain and held.startswith(plain)
+    assert morph_steps.parse_part(["OrbicularisOris=0.125"]) == {"OrbicularisOris": 0.125}
+    for bad in ("OrbicularisOris", "OrbicularisOris=1.5", "=0.2"):
+        try:
+            morph_steps.parse_part([bad])
+        except ValueError:
+            continue
+        raise AssertionError("accepted " + bad)
+
+
 # --- lips that separate --------------------------------------------------------------------
 
 def _lip_slabs(gap):
