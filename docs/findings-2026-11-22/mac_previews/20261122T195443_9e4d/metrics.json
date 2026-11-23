@@ -1,0 +1,57 @@
+{
+  "subject": "s01_20261110T212937Z_burst",
+  "pathway": "mouth_preview",
+  "script": "tools/mouth_check.py --preview",
+  "run_id": "20261122T195443_9e4d",
+  "status": "ok",
+  "error": null,
+  "traceback": null,
+  "started_at": "2026-11-22T19:54:43",
+  "wall_clock_s": 6.758,
+  "git": {
+    "sha": "2e54a98633ceb6b95c447fac208bc376bd2af995",
+    "dirty": true
+  },
+  "python": "3.15.2",
+  "packages": {
+    "numpy": "2.5.5",
+    "scipy": "1.18.1",
+    "trimesh": null
+  },
+  "metrics": {
+    "capture": "s01_20261110T212937Z_burst",
+    "start": "lab",
+    "mirror_verdict": "OK",
+    "motion_source": "anim_ui_generic.npz (keyboard UI, generic head)",
+    "approximate": "skin-only fit; lip muscle moved by a field from the skin only",
+    "modes": {
+      "gap": {
+        "edge_gap_mm": 6.151880530968245,
+        "ref_edge_gap_mm": 6.109496077505405,
+        "rest_opening_mm2": 128.0,
+        "ref_rest_opening_mm2": 149.25,
+        "speech_opening_mm2": 434.625,
+        "ref_speech_opening_mm2": 524.3125,
+        "speech_frames": 23,
+        "widest_motion_index": 5,
+        "speech_ratio": 0.828942663011086,
+        "muscle_gap_min_mm": 0.3643866027243848,
+        "muscle_gap_median_mm": 1.7728308758763225,
+        "ref_muscle_gap_min_mm": 0.7534880530568688,
+        "ref_muscle_gap_median_mm": 1.7936211425780386,
+        "muscle_slices": 30,
+        "muscle_slices_under_1mm": 7,
+        "muscle_ratio": 0.9503995234455673,
+        "muscle_ratio_min": 0.4079857020111316,
+        "muscle_slices_closing": 0,
+        "muscle_closing_frac": 0.0,
+        "verdict": "OK",
+        "scale_vs_lab_head": 0.7385535058634823,
+        "landmark_residual_median_mm": 1.1489990113549233,
+        "cloud_to_skin_median_mm": 0.6068587845851772,
+        "skin_folds": 136,
+        "seam_points_dropped": 81
+      }
+    }
+  }
+}
