@@ -244,12 +244,41 @@ A single photo (`..._photo`) writes the same files without a prefix. A recording
 - The left/right check is **OK** without `--relabel`, so the fix works on the phone.
 - 16 depth frames merged per pose lowered the face's depth roughness from 1.43 to 1.12 mm, and halved the flying pixels (0.58% → 0.28%), by `tools/compare_depth_noise.py`.
 
-It has not been fitted yet.
+**Both captures refitted (2026-11-22)** from the lab head, with the detail pass, the split lip field and the tissue guards:
+
+| Measure | Burst (2026-11-10) | Guided (2026-10-30) |
+| --- | --- | --- |
+| Left/right check | OK | `LABELS_SWAPPED`, relabelled automatically, OK after |
+| Size against the lab head | 73.9% | 71.6% |
+| Skin to landmarks | 1.15 mm typical, 2.8 mm for 95% | 1.10 mm typical, 3.3 mm for 95% |
+| Scan to skin | 0.61 mm typical, 2.2 mm for 95% | 0.76 mm typical, 3.5 mm for 95% |
+| Feature match, before → after detail pass (median) | nose 0.61 → 0.56, brow 0.98 → 0.72, cheeks 1.11 → 0.83, chin 1.23 → 0.99 mm | nose 0.69 → 0.60, brow 1.36 → 1.03, cheeks 1.21 → 0.95, chin 0.71 → 0.67 mm |
+| Mouth at rest | hole edges 6.1 mm apart (lab head at this size 6.1) | 5.9 mm (5.9) |
+| Lip muscle at rest | halves 1.66 mm apart (lab head 1.79), no slice closing | 1.81 mm (1.75), none closing |
+| Skin-only speech preview | opens 81% as wide as the lab head | 92% |
+| Physical checks (`verify.py`) | WARN (folded triangles in the lower-lip depressors, volume, tissue in bone, attachments) | FAIL: ZygomaticusMinor_r at 1.74× its volume |
+
+**Step-by-step morph** (`rig/morph_search.py`): t is the fraction of the way from the lab head (0) to the fit (1). Every step passed the physical checks, was written into Maya and simulated stably (frames 0–50). The column is the keyboard UI's "not even you": the mouth's widest opening against the lab head's at that size (pass ≥ 70%), and the lip muscle's widest gap.
+
+| t | Burst | Guided |
+| --- | --- | --- |
+| 0.125 | **pass**: 87%, muscle 96% | **pass**: 85%, muscle 96% |
+| 0.157 | fail: 68%, muscle 89% | fail: 66%, muscle 89% |
+| 0.188 | fail: 63%, muscle 87% | fail: 61%, muscle 87% |
+| 0.25 | fail: 63%, muscle 84% | fail: 64%, muscle 84% |
+
+The furthest working step of each is kept as `template_export/scenes/<id>_morph.mb` (and `_morph_ui.mb` for the keyboard UI). The lips no longer stick (the lip muscle parts at 84–96% of the lab head's at every step); what stops the morph is the middle of the upper lip, which follows the jaw down as the mouth opens. See Known issues.
 
 ---
 
 # ⚠️ Known issues
 
+- **The morph stops working at t ≈ 0.15, on both captures.** Past that step the middle of the upper lip follows the jaw down when the mouth opens (at the widest frame it drops 16.6 mm against the lab head's 5.9, and stays about 5 mm low after the sentence), so the opening falls from 87% to 68% of the lab head's. Tests on the burst capture's t = 0.157 step, each putting one part back at t = 0.125:
+  - the lip muscle (OrbicularisOris) alone restores it (87%);
+  - the skin, the joints, the lower-lip depressors or the chin muscle change nothing (68%);
+  - moving the whole head 2 mm changes nothing (the same 779 mm²), and neither does scaling every tissue's `tetSize` with the head (67%) or pinning the attachments' target maps to the lab head's binding (68%).
+
+  The lip muscle moves only ~0.05 mm between the two steps, so the likely cause is Ziva's tet mesh for it. That mesh is rebuilt from the rest shape at `tetSize` 26.4 (about a quarter of the muscle's width), much coarser than the ~2.5 mm gap between the lip halves, so a tiny change can join the halves at the middle. A finer lip-muscle tet mesh is the next test. It changes the lab's tuned rig, so it is a decision for the lab.
 - **Fits before 2026-11-17 animate with a sealed mouth** (`capture_01`). The lab rig rests with its lips apart (mouth-hole edges 8.3 mm apart at the middle), and its speech motion starts from there. The fit pulled the mouth hole onto the person's closed lips, which squeezed the hole and the lip muscle shut; when animated, the mouth opened about 40–50% as wide as the lab head's, only in the middle. The fit now keeps the rig's resting opening on the person's lip line, so at rest the lips show about 2 mm apart, as on the lab head (skin-only preview: 82–94% of the lab head's opening). `ui_smoke_test.py` and `tools/mouth_check.py` now fail a mouth that stays shut. Rebuild `base_human` and refit.
 - **Left/right labels were swapped by the first app build** (it mirrored the image MediaPipe sees). Fixed in `CameraManager.swift` and verified: the burst capture of 2026-11-10 passes the left/right check without `--relabel`. The first capture keeps `labels: swapped` in its `capture.json`, and `fit_subject.py` relabels it on its own.
 - **The lab head is stylised** (about 1.45× a real face, eyes 1.6–1.7×). The human start head absorbs most of that, but the skin is still a little faceted: the phone's depth is about 1 mm noisy and coarse, and the fit follows it no closer than that.

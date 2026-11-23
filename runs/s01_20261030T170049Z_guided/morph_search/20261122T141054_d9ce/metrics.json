@@ -1,0 +1,121 @@
+{
+  "subject": "s01_20261030T170049Z_guided",
+  "pathway": "morph_search",
+  "script": "rig/morph_search.py",
+  "run_id": "20261122T141054_d9ce",
+  "status": "ok",
+  "error": null,
+  "traceback": null,
+  "started_at": "2026-11-22T14:10:54",
+  "wall_clock_s": 3959.409,
+  "git": {
+    "sha": "3bb89cc92bd06870b17440d88bbecbab2751771f",
+    "dirty": true
+  },
+  "python": "3.9.7",
+  "packages": {
+    "numpy": "2.0.2",
+    "scipy": "1.13.1",
+    "trimesh": null
+  },
+  "metrics": {
+    "steps": [
+      {
+        "t": 0.25,
+        "subject": "s01_20261030T170049Z_guided_t025",
+        "verify": "pass",
+        "verify_failed": [],
+        "write_rest": {
+          "ok": true,
+          "exit": 0,
+          "seconds": 116.4
+        },
+        "sim_check": {
+          "ok": true,
+          "exit": 0,
+          "seconds": 430.6
+        },
+        "ui_smoke": {
+          "ok": false,
+          "exit": 2,
+          "seconds": 435.8
+        },
+        "pass": false,
+        "failed_at": "ui_smoke"
+      },
+      {
+        "t": 0.125,
+        "subject": "s01_20261030T170049Z_guided_t012",
+        "verify": "pass",
+        "verify_failed": [],
+        "write_rest": {
+          "ok": true,
+          "exit": 0,
+          "seconds": 109.4
+        },
+        "sim_check": {
+          "ok": true,
+          "exit": 0,
+          "seconds": 415.6
+        },
+        "ui_smoke": {
+          "ok": true,
+          "exit": 0,
+          "seconds": 428.8
+        },
+        "pass": true,
+        "failed_at": null
+      },
+      {
+        "t": 0.188,
+        "subject": "s01_20261030T170049Z_guided_t019",
+        "verify": "pass",
+        "verify_failed": [],
+        "write_rest": {
+          "ok": true,
+          "exit": 0,
+          "seconds": 107.6
+        },
+        "sim_check": {
+          "ok": true,
+          "exit": 0,
+          "seconds": 409.2
+        },
+        "ui_smoke": {
+          "ok": false,
+          "exit": 2,
+          "seconds": 429.8
+        },
+        "pass": false,
+        "failed_at": "ui_smoke"
+      },
+      {
+        "t": 0.157,
+        "subject": "s01_20261030T170049Z_guided_t016",
+        "verify": "pass",
+        "verify_failed": [],
+        "write_rest": {
+          "ok": true,
+          "exit": 0,
+          "seconds": 107.2
+        },
+        "sim_check": {
+          "ok": true,
+          "exit": 0,
+          "seconds": 402.7
+        },
+        "ui_smoke": {
+          "ok": false,
+          "exit": 2,
+          "seconds": 416.1
+        },
+        "pass": false,
+        "failed_at": "ui_smoke"
+      }
+    ],
+    "furthest_working_t": 0.125,
+    "first_failing_t": 0.157,
+    "kept_scene": "s01_20261030T170049Z_guided_morph.mb",
+    "kept_step": "s01_20261030T170049Z_guided_t012"
+  }
+}
