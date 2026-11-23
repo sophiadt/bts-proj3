@@ -40,6 +40,17 @@ from pipeline import fixture as fx
 N_PER_EDGE = 12
 SNAP_MM = 6.0
 
+# Optional, off by default (fit_skin(smooth_mm=..., ring_depth=...); --smooth-contours / --ring-depth).
+SMOOTH_SIGMA_MM = 0.8      # per-axis landmark scatter measured on the first captures (0.75-1.1 mm)
+RING_IN_MM = 2.0           # skin closer than this to an opening's outline is not used (lashes, lip contact)
+RING_OUT_MM = 9.0          # ... and nothing farther than this
+RING_MIN_POINTS = 20
+RING_ZWIN_SCAN_MM = 8.0    # ring points within this depth of the landmark (hair, neck, wet-eye returns out)
+RING_ZWIN_REF_MM = 3.0     # same on the lab head, whose lining wraps 7-9 mm behind the margin
+RING_DEADBAND_MM = 0.5     # a ring/scan disagreement below this is left alone (continuous soft threshold)
+RING_CLAMP_MM = 3.0        # largest depth change one target can take
+RING_STATS = {}            # filled by ring_adjust: what the last fit_skin changed
+
 CONTOURS = {
     "eye_r": (mp.RIGHT_EYE_UPPER, mp.RIGHT_EYE_LOWER, mp.EYE_R_INNER),
     "eye_l": (mp.LEFT_EYE_UPPER, mp.LEFT_EYE_LOWER, mp.EYE_L_INNER),
@@ -54,6 +65,110 @@ def _resample(pts, n):
     s = np.r_[0.0, np.cumsum(seg)]
     t = np.linspace(0.0, s[-1], n)
     return np.column_stack([np.interp(t, s, pts[:, k]) for k in range(3)])
+
+
+def smooth_contour(pts, sigma_mm):
+    """A smoothing spline through a landmark polyline (its vertices re-evaluated on the curve).
+
+    The curve may miss a landmark by about sigma_mm in 3-D (the measured scatter of one
+    landmark). On an 11-point lip contour that cuts the jitter by roughly a fifth and keeps
+    about 80% of a 2 mm cupid's bow; a looser spline removes no more jitter and flattens the
+    bow (tests/test_contours.py). Returns the points unchanged for sigma_mm <= 0 or < 5 points."""
+    pts = np.asarray(pts, dtype=np.float64)
+    m = len(pts)
+    if sigma_mm <= 0 or m < 5:
+        return pts
+    chord = np.r_[0.0, np.cumsum(np.linalg.norm(np.diff(pts, axis=0), axis=1))]
+    if not chord[-1] > 0 or np.any(np.diff(chord) <= 0):
+        return pts
+    from scipy.interpolate import splev, splprep
+    u = chord / chord[-1]
+    tck, _ = splprep(pts.T, u=u, w=np.full(m, 1.0 / sigma_mm), s=float(m), k=3)
+    return np.array(splev(u, tck)).T
+
+
+def _quad_at(P, q, iters=4):
+    """Robust (Tukey-weighted) local quadratic z(x, y) of points P (k,3), evaluated at xy = q."""
+    x, y = P[:, 0] - q[0], P[:, 1] - q[1]
+    A = np.c_[np.ones(len(P)), x, y, x * x, x * y, y * y]
+    w = np.ones(len(P))
+    c = np.zeros(6)
+    for _ in range(iters):
+        c, *_ = np.linalg.lstsq(A * w[:, None], P[:, 2] * w, rcond=None)
+        r = P[:, 2] - A @ c
+        scale = max(1.4826 * np.median(np.abs(r)), 0.2)
+        u = np.clip(r / (4.685 * scale), -1.0, 1.0)
+        w = 1.0 - u * u
+    return float(c[0])
+
+
+def _outline_dense(xy, closed, per_seg=12):
+    p = np.asarray(xy, dtype=np.float64)
+    if closed:
+        p = np.vstack([p, p[:1]])
+    segs = [np.linspace(p[i], p[i + 1], per_seg, endpoint=False) for i in range(len(p) - 1)]
+    return np.vstack(segs + [p[-1:]])
+
+
+def ring_depth(points, q_xy, z_hint, outline_xy, closed, zwin, r_in=RING_IN_MM, r_out=RING_OUT_MM):
+    """Depth (z) at xy positions q_xy of the skin AROUND an opening, carried across it.
+
+    points: (N,3) skin samples (scan cloud or template vertices). outline_xy: the opening's
+    outline in x, y (a closed polygon, or an open polyline for the lip line). Skin inside the
+    outline or closer than r_in to it is ignored (that is where the sensor reads the wet eye
+    or the dark mouth); a robust local quadratic through the skin r_in..r_out outside it gives
+    the depth at each q. Only points within zwin of z_hint count. NaN where fewer than
+    RING_MIN_POINTS remain."""
+    pts = np.asarray(points, dtype=np.float64)
+    q_xy = np.asarray(q_xy, dtype=np.float64)
+    out = np.full(len(q_xy), np.nan)
+    if len(pts) < RING_MIN_POINTS:
+        return out
+    d_out, _ = cKDTree(_outline_dense(outline_xy, closed)).query(pts[:, :2])
+    inside = np.zeros(len(pts), dtype=bool)
+    if closed:
+        from matplotlib.path import Path as Polygon
+        inside = Polygon(np.asarray(outline_xy, dtype=np.float64)).contains_points(pts[:, :2])
+    ring = pts[(~inside) & (d_out >= r_in) & (d_out <= r_out)]
+    if len(ring) < RING_MIN_POINTS:
+        return out
+    tree = cKDTree(ring[:, :2])
+    for k in range(len(q_xy)):
+        idx = tree.query_ball_point(q_xy[k], r_out)
+        if len(idx) < RING_MIN_POINTS:
+            continue
+        P = ring[idx]
+        P = P[np.abs(P[:, 2] - z_hint[k]) <= zwin]
+        if len(P) >= RING_MIN_POINTS:
+            out[k] = _quad_at(P, q_xy[k])
+    return out
+
+
+def ring_adjust(target, cloud, outline_xy, closed, ref_points, ref_outline_xy, ref_ref, ref_closed=True,
+                r_in=RING_IN_MM):
+    """Move each target's depth toward what the skin around its opening says it should be.
+
+    target (k,3): the landmark contour, depth already taken from the scan. The person's ring
+    surface gives a depth at each target; the lab head's own margin-minus-ring offset
+    (ref_ref: its margin points, (k,3), against ref_points, its skin vertices) is added so a
+    lid's or lip's real curve survives. The change is the ring/scan disagreement past a soft
+    RING_DEADBAND_MM, clamped to RING_CLAMP_MM; a target whose ring or reference ring cannot
+    be fitted is left as it is. -> (new targets, number changed)."""
+    z_old = target[:, 2].copy()
+    z_ring = ring_depth(cloud, target[:, :2], z_old, outline_xy, closed, RING_ZWIN_SCAN_MM, r_in)
+    z_refring = ring_depth(ref_points, ref_ref[:, :2], ref_ref[:, 2], ref_outline_xy, ref_closed,
+                           RING_ZWIN_REF_MM, r_in)
+    delta = (z_ring + (ref_ref[:, 2] - z_refring)) - z_old
+    ok = np.isfinite(delta)
+    shrunk = np.sign(delta) * np.maximum(np.abs(delta) - RING_DEADBAND_MM, 0.0)
+    shrunk = np.clip(shrunk, -RING_CLAMP_MM, RING_CLAMP_MM)
+    out = np.asarray(target, dtype=np.float64).copy()
+    out[ok, 2] += shrunk[ok]
+    RING_STATS["targets"] = RING_STATS.get("targets", 0) + int(len(target))
+    RING_STATS["fitted"] = RING_STATS.get("fitted", 0) + int(ok.sum())
+    RING_STATS["changed"] = RING_STATS.get("changed", 0) + int((np.abs(shrunk[ok]) > 0).sum())
+    RING_STATS["abs_shift_sum_mm"] = RING_STATS.get("abs_shift_sum_mm", 0.0) + float(np.abs(shrunk[ok]).sum())
+    return out, int((np.abs(shrunk[ok]) > 0).sum())
 
 
 def _resample_idx(V, chain, n):
@@ -81,10 +196,15 @@ def template_edges(V, F):
     return out, x0
 
 
-def constraints(V, F, landmarks, valid, cloud=None, n=N_PER_EDGE, ref_skin=None, fixture=None, only=None):
+def constraints(V, F, landmarks, valid, cloud=None, n=N_PER_EDGE, ref_skin=None, fixture=None, only=None,
+                smooth_mm=0.0, ring=False):
     """-> (vertex indices, target points (k,3)) pulling each opening's edges
     onto the person's contours, in the fit frame. Edges whose contour has
-    missing landmarks are skipped."""
+    missing landmarks are skipped.
+
+    smooth_mm > 0: the landmark contours go through smooth_contour() first.
+    ring: eyelid depth also comes from the skin around each eye (ring_adjust); needs
+    cloud, ref_skin and fixture, and applies to the eyes only (the mouth gap has its own)."""
     edges, _x0 = template_edges(V, F)
     tree = cKDTree(cloud) if cloud is not None and len(cloud) else None
     idx, tgt = [], []
@@ -92,6 +212,14 @@ def constraints(V, F, landmarks, valid, cloud=None, n=N_PER_EDGE, ref_skin=None,
         if only is not None and name not in only:
             continue
         upper, lower, inner = CONTOURS[name]
+        outlines = None
+        if ring and name != "mouth" and cloud is not None and ref_skin is not None and fixture is not None \
+                and valid[list(upper) + list(lower)].all():
+            vu = [fixture["vertex"][i] for i in upper]
+            vl = [fixture["vertex"][i] for i in lower]
+            if not any(v is None for v in vu + vl):
+                outlines = (np.r_[landmarks[list(upper)][:, :2], landmarks[list(lower)][::-1][:, :2]],
+                            np.r_[ref_skin[vu][:, :2], ref_skin[vl][::-1][:, :2]])
         for chain, contour in ((up_chain, upper), (lo_chain, lower)):
             ids = list(contour)
             # Inner corner first, like the template chain. The inner-lip lists already
@@ -101,7 +229,7 @@ def constraints(V, F, landmarks, valid, cloud=None, n=N_PER_EDGE, ref_skin=None,
                 ids = ids[::-1]
             if not valid[ids].all():
                 continue
-            target = _resample(landmarks[ids], n)
+            target = _resample(smooth_contour(landmarks[ids], smooth_mm), n)
             if tree is not None:
                 d, j = tree.query(target)
                 near = d < SNAP_MM
@@ -116,6 +244,8 @@ def constraints(V, F, landmarks, valid, cloud=None, n=N_PER_EDGE, ref_skin=None,
                 if any(v is None for v in verts):
                     continue
                 margin = _resample(ref_skin[verts], n)
+                if outlines is not None:
+                    target, _ = ring_adjust(target, cloud, outlines[0], True, ref_skin, outlines[1], margin)
                 target = target + (ref_skin[edge] - margin)
             idx.extend(edge)
             tgt.extend(target)
@@ -129,7 +259,8 @@ def gap_targets(seam, ref_seam, ref_edge_up, ref_edge_lo):
     return seam + (ref_edge_up - ref_seam), seam + (ref_edge_lo - ref_seam)
 
 
-def mouth_gap_constraints(V, F, landmarks, valid, gap_ref, cloud=None, fixture=None, n=N_PER_EDGE, edges=None):
+def mouth_gap_constraints(V, F, landmarks, valid, gap_ref, cloud=None, fixture=None, n=N_PER_EDGE, edges=None,
+                          smooth_mm=0.0, ring=False):
     """The mouth hole keeps the rig's resting opening, centred on the person's lips.
 
     The lab rig rests with the mouth slightly open (hole edges 8.3 mm apart at
@@ -156,12 +287,17 @@ def mouth_gap_constraints(V, F, landmarks, valid, gap_ref, cloud=None, fixture=N
     vl = [fixture["vertex"][i] for i in ids_l]
     if any(v is None for v in vu + vl):
         return empty
-    seam = 0.5 * (_resample(landmarks[ids_u], n) + _resample(landmarks[ids_l], n))
+    seam = 0.5 * (_resample(smooth_contour(landmarks[ids_u], smooth_mm), n)
+                  + _resample(smooth_contour(landmarks[ids_l], smooth_mm), n))
     if cloud is not None and len(cloud):
         d, j = cKDTree(cloud).query(seam)
         near = d < SNAP_MM
         seam[near, 2] = cloud[j[near], 2]
     ref_seam = 0.5 * (_resample(gap_ref[vu], n) + _resample(gap_ref[vl], n))
+    if ring and cloud is not None and len(cloud):
+        # the lip line's depth from the lips on either side of it, plus the lab head's own offset
+        ref_outline = np.r_[gap_ref[vu][:, :2], gap_ref[vl][::-1][:, :2]]
+        seam, _ = ring_adjust(seam, cloud, seam[:, :2], False, gap_ref, ref_outline, ref_seam, True, r_in=2.5)
     eu, el = _resample_idx(V, up_chain, n), _resample_idx(V, lo_chain, n)
     tu, tl = gap_targets(seam, ref_seam, gap_ref[eu], gap_ref[el])
     return np.r_[eu, el], np.r_[tu, tl], seam

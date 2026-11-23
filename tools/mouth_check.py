@@ -190,7 +190,7 @@ def check_subject(subject):
 
 # --- preview: skin-only fit, any machine ------------------------------------------------
 
-def preview(capture_arg, start="base", modes=(fs.MOUTH_GAP,), force=False):
+def preview(capture_arg, start="base", modes=(fs.MOUTH_GAP,), force=False, smooth_mm=0.0, ring_depth=False, smooth_skin=0):
     capture = cap.resolve_capture(capture_arg)
     cid = cap.capture_id(capture)
     manifest = cap.read_manifest(capture) or {}
@@ -226,7 +226,8 @@ def preview(capture_arg, start="base", modes=(fs.MOUTH_GAP,), force=False):
             mv = merge_views.merge(views, fixture, V)
             s = mv["scale"]
             s_lab = s * s_base
-            X, X0, ctx = fs.fit_skin(V, F, mv, fixture, s, gap_ref=s_lab * lab_skin, mouth=mode, verbose=False)
+            X, X0, ctx = fs.fit_skin(V, F, mv, fixture, s, gap_ref=s_lab * lab_skin, mouth=mode, verbose=False,
+                                     smooth_mm=smooth_mm, ring_depth=ring_depth, smooth_skin=smooth_skin)
             field = volumetric.build_field(X0, X - X0)
             P = s * oo_start + volumetric.eval_field(field, s * oo_start)
             rep = mouth.assess(X, F, parts, s_lab * lab_skin, muscle=P, ref_muscle=s_lab * lab_oo,
@@ -264,11 +265,19 @@ def main(argv=None):
     g.add_argument("--close-mouth", action="store_true", help="preview: the old mouth pull only")
     g.add_argument("--compare", action="store_true", help="preview: the old pull and the kept gap")
     ap.add_argument("--force", action="store_true", help="preview: past a failing mirror gate")
+    ap.add_argument("--smooth-contours", nargs="?", type=float, const=fs.holes.SMOOTH_SIGMA_MM, default=0.0,
+                    metavar="MM", help="preview: smooth the eyelid/lip landmark contours (bare flag: {0} mm)"
+                                       .format(fs.holes.SMOOTH_SIGMA_MM))
+    ap.add_argument("--ring-depth", action="store_true",
+                    help="preview: eyelid and lip-line depth from the skin around each opening")
+    ap.add_argument("--smooth-skin", nargs="?", type=int, const=10, default=0, metavar="N",
+                    help="preview: N Taubin smoothing iterations on the skin after the fit (bare flag: 10)")
     args = ap.parse_args(argv)
     if args.preview:
         modes = ((fs.MOUTH_CONTOURS, fs.MOUTH_GAP) if args.compare else
                  (fs.MOUTH_CONTOURS,) if args.close_mouth else (fs.MOUTH_GAP,))
-        res = preview(args.target, start=args.start, modes=modes, force=args.force)
+        res = preview(args.target, start=args.start, modes=modes, force=args.force,
+                      smooth_mm=args.smooth_contours, ring_depth=args.ring_depth, smooth_skin=args.smooth_skin)
         final = res[modes[-1]]["verdict"]
     else:
         final = check_subject(args.target)["verdict"]

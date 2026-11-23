@@ -84,6 +84,40 @@ def detail_pass(X, faces, cloud, cloud_n, seen, rim_dist=None, gain=GAIN, clamp_
                 "move_max_mm": float(np.abs(step).max())}
 
 
+def smooth_skin(X, faces, rim_dist=None, iters=10, lam=0.5, mu=-0.53, fade_mm=HOLE_FADE_MM):
+    """Taubin (shrink-free) smoothing of the skin after the fit and detail pass.
+
+    The scan's roughness (about 1.1 mm, the same in every frame) is carried into the
+    skin by the data term and shows as small lumps. Taubin smoothing alternates a
+    shrinking step (lam) and an inflating step (mu < -lam), which flattens
+    short-wavelength lumps and keeps the face's size and its nose, lip and brow shape.
+    Skin within fade_mm[0] of a hole is not moved at all and fades in to full strength at
+    fade_mm[1], so the eyelid and lip lines the fit placed stay where they are.
+    -> (X', info)."""
+    X = np.asarray(X, dtype=np.float64)
+    n = len(X)
+    if iters <= 0:
+        return X, {"iters": 0}
+    W = _neighbour_mean(n, faces)
+    w = np.ones(n)
+    if rim_dist is not None:
+        a, b = fade_mm
+        w = np.clip((np.asarray(rim_dist, dtype=np.float64) - a) / (b - a), 0.0, 1.0)
+
+    def roughness(P):
+        return float(np.median(np.linalg.norm(P - W @ P, axis=1)[w > 0.5])) if (w > 0.5).any() else 0.0
+
+    before = roughness(X)
+    Y = X.copy()
+    for _ in range(int(iters)):
+        for k in (lam, mu):
+            Y = Y + (k * w)[:, None] * (W @ Y - Y)
+    moved = np.linalg.norm(Y - X, axis=1)
+    return Y, {"iters": int(iters), "lambda": lam, "mu": mu, "roughness_before_mm": before,
+               "roughness_after_mm": roughness(Y), "move_median_mm": float(np.median(moved[w > 0.5])) if (w > 0.5).any() else 0.0,
+               "move_max_mm": float(moved.max())}
+
+
 def feature_regions(V, regions):
     """Facial regions on the skin (start head positions, template frame:
     +Y up, face toward -Z, +X the subject's right), from fixture.skin_regions'
