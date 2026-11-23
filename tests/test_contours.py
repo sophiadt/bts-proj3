@@ -207,3 +207,48 @@ def test_mouth_gap_options_run(monkeypatch):
     assert base[0].shape == both[0].shape and base[1].shape == both[1].shape
     assert np.isfinite(both[1]).all() and both[2] is not None
     assert "targets" in h.RING_STATS
+
+
+# --- skin smoothing (pipeline/detail.smooth_skin) ---------------------------------------------
+
+def _grid(n=41, size=60.0):
+    import itertools
+    xs = np.linspace(-size / 2, size / 2, n)
+    X = np.array([[x, y, 0.0] for y, x in itertools.product(xs, xs)])
+    F = []
+    for r in range(n - 1):
+        for c in range(n - 1):
+            a, b, d, e = r * n + c, r * n + c + 1, (r + 1) * n + c, (r + 1) * n + c + 1
+            F += [[a, b, e], [a, e, d]]
+    return X, np.array(F), xs
+
+
+def test_skin_smoothing_flattens_lumps_and_keeps_the_shape_and_the_size():
+    from pipeline import detail
+    rng = np.random.default_rng(5)
+    X, F, _ = _grid()
+    X[:, 2] = 4.0 * np.exp(-((X[:, 0] ** 2 + X[:, 1] ** 2) / 12.0 ** 2))       # a smooth 4 mm bump, like a nose
+    clean = X.copy()
+    X = X + np.c_[np.zeros((len(X), 2)), rng.normal(scale=0.5, size=len(X))]    # lumps of about 0.5 mm
+    Y, info = detail.smooth_skin(X, F, iters=10)
+    err = lambda P: np.sqrt(np.mean((P[:, 2] - clean[:, 2]) ** 2))
+    assert err(Y) < 0.6 * err(X)                                    # much closer to the true surface
+    assert info["roughness_after_mm"] < 0.6 * info["roughness_before_mm"]
+    inner = (np.abs(X[:, 0]) < 20) & (np.abs(X[:, 1]) < 20)
+    assert Y[inner, 2].max() > 0.85 * 4.0                           # the bump keeps its height (no shrink)
+    assert abs(Y[inner, 2].mean() - clean[inner, 2].mean()) < 0.15  # and its volume
+
+
+def test_skin_smoothing_leaves_skin_near_a_hole_untouched_and_off_means_off():
+    from pipeline import detail
+    rng = np.random.default_rng(6)
+    X, F, _ = _grid()
+    X[:, 2] = rng.normal(scale=0.5, size=len(X))
+    rim = np.abs(X[:, 0]) + 0.0                                     # distance to a "hole" along x = 0
+    Y, _ = detail.smooth_skin(X, F, rim_dist=rim, iters=10)
+    near = rim <= 3.0
+    np.testing.assert_array_equal(Y[near], X[near])                 # rim skin does not move at all
+    assert np.abs(Y[rim > 8][:, 2] - X[rim > 8][:, 2]).max() > 0.05  # full strength far from it
+    Z, info = detail.smooth_skin(X, F, iters=0)
+    np.testing.assert_array_equal(Z, X)
+    assert info == {"iters": 0}
