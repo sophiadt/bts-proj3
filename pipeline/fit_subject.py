@@ -149,14 +149,18 @@ def relabel(views):
 
 
 def fit_skin(V, F, mv, fixture, s, gap_ref=None, base_mode=False, use_anchors=False, mouth=MOUTH_GAP,
-             detail=True, verbose=True):
+             detail=True, verbose=True, smooth_mm=0.0, ring_depth=False):
     """Step 3: the non-rigid skin fit in output space.
 
     V: the start head's skin (unscaled), mv: merge_views.merge() of the capture
     onto it, s: its scale. gap_ref: the lab head's skin at the subject's size
     (mouth="gap"). Needs only the skin, so tools/mouth_check.py --preview runs
     it without the other bodies. -> (X, X0, ctx); ctx holds the regions, the
-    masks the later steps use, and metrics {"openings", "nonrigid"}."""
+    masks the later steps use, and metrics {"openings", "nonrigid"}.
+
+    smooth_mm > 0: the eyelid and lip landmark contours go through a smoothing spline
+    (holes.smooth_contour). ring_depth: the eyelid and lip-line depth also comes from the
+    skin around each opening (holes.ring_adjust). Both are off by default."""
     from scipy.spatial import cKDTree
     M = {}
     regions = fx.skin_regions(V, F)
@@ -187,10 +191,12 @@ def fit_skin(V, F, mv, fixture, s, gap_ref=None, base_mode=False, use_anchors=Fa
     # pulled onto the inner-lip contours ("contours", the old behaviour).
     finite = np.isfinite(mv["landmarks"]).all(axis=1)
     seam = None
+    holes.RING_STATS.clear()
+    hk = dict(smooth_mm=smooth_mm, ring=ring_depth)
     if mouth == MOUTH_GAP:
         hidx, htgt = holes.constraints(V, F, mv["landmarks"], finite, cloud_s, ref_skin=X0, fixture=fixture,
-                                       only=("eye_r", "eye_l"))
-        midx, mtgt, seam = holes.mouth_gap_constraints(V, F, mv["landmarks"], finite, gap_ref, cloud_s, fixture)
+                                       only=("eye_r", "eye_l"), **hk)
+        midx, mtgt, seam = holes.mouth_gap_constraints(V, F, mv["landmarks"], finite, gap_ref, cloud_s, fixture, **hk)
         hidx, htgt = np.r_[hidx, midx], np.concatenate([htgt.reshape(-1, 3), mtgt.reshape(-1, 3)])
         if seam is not None:
             keep = holes.drop_seam_band(cloud_s, seam)
@@ -200,9 +206,19 @@ def fit_skin(V, F, mv, fixture, s, gap_ref=None, base_mode=False, use_anchors=Fa
             print("note: inner-lip landmarks missing; the mouth hole keeps the start head's shape")
     elif mouth == MOUTH_CONTOURS:
         hidx, htgt = holes.constraints(V, F, mv["landmarks"], finite, cloud_s, ref_skin=X0, fixture=fixture,
-                                       only=("eye_r", "eye_l") if base_mode else None)
+                                       only=("eye_r", "eye_l") if base_mode else None, **hk)
     else:
         raise ValueError("mouth must be {0!r} or {1!r}".format(MOUTH_GAP, MOUTH_CONTOURS))
+    if smooth_mm > 0:
+        M["smooth_contours_mm"] = smooth_mm
+    if ring_depth:
+        st = dict(holes.RING_STATS)
+        if st.get("fitted"):
+            st["mean_abs_shift_mm"] = round(st.pop("abs_shift_sum_mm") / st["fitted"], 3)
+        st.pop("abs_shift_sum_mm", None)
+        M["ring_depth"] = st
+        if verbose:
+            print("ring depth:", st)
     lm_i = np.r_[vi, hidx]
     lm_p = np.r_[mv["landmarks"][li], htgt] if len(hidx) else mv["landmarks"][li]
     lm_w = np.r_[w, np.full(len(hidx), HOLE_WEIGHT)]
@@ -324,7 +340,8 @@ def mouth_report(X, F, parts, scale_vs_lab, muscle=None, mouth_mode=MOUTH_GAP, v
 
 
 def fit(capture_dir, subject_id, out_root=None, do_relabel=False, force=False, use_anchors=False,
-        base=None, base_mode=False, mouth=MOUTH_GAP, detail=True, split_lips=True, verbose=True):
+        base=None, base_mode=False, mouth=MOUTH_GAP, detail=True, split_lips=True, verbose=True,
+        smooth_mm=0.0, ring_depth=False):
     """base: start from template_export/subjects/<base> (the human base head)
     instead of the lab head. base_mode: building that base from MediaPipe's
     average face -- its lips are parted (5.8 mm), so lip landmarks and
@@ -399,7 +416,8 @@ def fit(capture_dir, subject_id, out_root=None, do_relabel=False, force=False, u
         gap_ref = M["scale_vs_lab_head"] * mouth_mod.load_lab_mesh(fx.SKIN)[0] if mouth == MOUTH_GAP else None
         M["mouth_mode"] = mouth
         X, X0, skin_ctx = fit_skin(V, F, mv, fixture, s, gap_ref=gap_ref, base_mode=base_mode,
-                                   use_anchors=use_anchors, mouth=mouth, detail=detail, verbose=verbose)
+                                   use_anchors=use_anchors, mouth=mouth, detail=detail, verbose=verbose,
+                                   smooth_mm=smooth_mm, ring_depth=ring_depth)
         M.update(skin_ctx["metrics"])
         _loops, face_region, near = skin_ctx["loops"], skin_ctx["face_region"], skin_ctx["near"]
         d_skin = X - X0
@@ -652,6 +670,11 @@ def main():
     ap.add_argument("--close-mouth", action="store_true",
                     help="old behaviour: pull the mouth hole onto the inner-lip contours (seals a closed-mouth "
                          "capture; for comparison only)")
+    ap.add_argument("--smooth-contours", nargs="?", type=float, const=holes.SMOOTH_SIGMA_MM, default=0.0,
+                    metavar="MM", help="smooth the eyelid and lip landmark contours with a spline allowed to miss "
+                                       "them by MM per axis (bare flag: {0}); off by default".format(holes.SMOOTH_SIGMA_MM))
+    ap.add_argument("--ring-depth", action="store_true",
+                    help="take eyelid and lip-line depth from the skin around each opening (off by default)")
     args = ap.parse_args()
     base = args.base
     capture = cap.resolve_capture(args.capture)
@@ -662,7 +685,8 @@ def main():
         print("capture.json records labels: swapped (a reviewed mirror check) -> relabelling; --no-relabel to skip")
     fit(capture, args.id or cap.capture_id(capture), do_relabel=relabel_flag, force=args.force,
         use_anchors=args.anchors, base=base, mouth=MOUTH_CONTOURS if args.close_mouth else MOUTH_GAP,
-        detail=not args.no_detail, split_lips=not args.no_split_lips)
+        detail=not args.no_detail, split_lips=not args.no_split_lips,
+        smooth_mm=args.smooth_contours, ring_depth=args.ring_depth)
 
 
 if __name__ == "__main__":
