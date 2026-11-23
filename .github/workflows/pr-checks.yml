@@ -1,0 +1,103 @@
+# Checks on every pull request into main, and on every push to main.
+#
+#   guard  - tools/check_changes.py: fails when a change deletes more than 10 files,
+#            a key file (CLAUDE.md, README.md, .gitignore, the lab scene, ...) or a whole
+#            key folder, or adds a Maya scene under template_export/ or a file over 95 MB.
+#            A pull request labelled `allow-deletions` may delete on purpose.
+#   tests  - pytest twice: as on the Ziva workstation's mayapy (Python 3.9, numpy 2.0.2,
+#            scipy 1.13.1, no trimesh) and as on a laptop (Python 3.12, current packages).
+#            The committed template_export/ is checked out, so the lab-data tests run.
+#   lint   - ruff, errors only (syntax errors, undefined names; Python 3.9 syntax).
+#            It never reformats code.
+#
+# On a free plan GitHub cannot block a merge or a direct push in a private repository,
+# so a red check is a warning to stop and look. The push run reports a bad push to main
+# after the fact; undo it with `git revert <sha>`, never `git push --force`.
+# Git LFS stays off: the 432 MB lab scene is never downloaded here.
+
+name: PR checks
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-checks-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  guard:
+    name: Deletion guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # the base commit is needed to compare against
+          filter: blob:none       # history without old file contents: fast
+          lfs: false
+      - name: Check what this change deletes
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          ALLOW_DELETIONS: ${{ contains(github.event.pull_request.labels.*.name, 'allow-deletions') && '1' || '' }}
+        run: |
+          if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
+            echo "No earlier commit to compare with; nothing to check."
+            exit 0
+          fi
+          python3 tools/check_changes.py "$BASE" HEAD
+
+  tests:
+    name: Tests (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Python 3.9 reached end of life in Oct 2025, and setup-python has no build of
+          # it for ubuntu-latest (26.04); ubuntu-24.04 still has 3.9.x. Maya 2023's
+          # mayapy is 3.9.7, so this job stays on 3.9 rather than moving up.
+          - name: as on mayapy, Python 3.9
+            os: ubuntu-24.04
+            python: "3.9"
+            packages: numpy==2.0.2 scipy==1.13.1 matplotlib pytest
+          - name: as on a laptop, Python 3.12
+            os: ubuntu-latest
+            python: "3.12"
+            packages: numpy scipy matplotlib trimesh rtree networkx pytest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install packages
+        run: python -m pip install ${{ matrix.packages }}
+      - name: Run the tests
+        env:
+          MPLBACKEND: Agg
+        run: python -m pytest tests -q
+
+  lint:
+    name: Lint (errors only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install ruff
+        run: python -m pip install ruff
+      - name: Syntax errors and undefined names
+        run: ruff check --target-version py39 --select E9,F63,F7,F82 --output-format=github .
