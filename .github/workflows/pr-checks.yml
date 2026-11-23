@@ -55,16 +55,21 @@ jobs:
 
   tests:
     name: Tests (${{ matrix.name }})
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
         include:
+          # Python 3.9 reached end of life in Oct 2025, and setup-python has no build of
+          # it for ubuntu-latest (26.04); ubuntu-24.04 still has 3.9.x. Maya 2023's
+          # mayapy is 3.9.7, so this job stays on 3.9 rather than moving up.
           - name: as on mayapy, Python 3.9
+            os: ubuntu-24.04
             python: "3.9"
             packages: numpy==2.0.2 scipy==1.13.1 matplotlib pytest
           - name: as on a laptop, Python 3.12
+            os: ubuntu-latest
             python: "3.12"
             packages: numpy scipy matplotlib trimesh rtree networkx pytest
     steps:
